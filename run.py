@@ -1,12 +1,7 @@
-# Importamos la función crear_app desde nuestro paquete app
-from school_guide.app import crear_app
+import os
+from app import create_app
 
-# Creamos una instancia de la aplicación usando la configuración por defecto
-app = crear_app()
+app = create_app(os.environ.get('FLASK_CONFIG', 'desarrollo'))
 
-# Este bloque se ejecuta solo si el archivo se ejecuta directamente
-# (no cuando se importa como módulo)
 if __name__ == '__main__':
-    # Iniciamos el servidor de desarrollo de Flask
-    # Por defecto, la aplicación estará disponible en http://localhost:5000
-    app.run() 
+    app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)

@@ -1,47 +1,64 @@
-# Importamos las librerías necesarias para manejar archivos y variables de entorno
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
-# Definimos la ruta base del proyecto
 basedir = os.path.abspath(os.path.dirname(__file__))
-# Cargamos las variables de entorno desde el archivo .env
 load_dotenv(os.path.join(basedir, '.env'))
 
-# Clase base de configuración que contiene las configuraciones comunes
+
 class Config:
-    # Clave secreta para proteger la aplicación de ataques
-    # Se puede definir en el archivo .env o usar el valor por defecto
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'clave-secreta-dificil-de-adivinar'
-    
-    # Configuración temporal usando SQLite para pruebas
-    # SQLite es una base de datos simple que no requiere instalación adicional
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'matute-guide-dev-secret-change-me'
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'matute-guide-jwt-dev-secret'
+
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'app.db')
-    
-    # Desactivamos el seguimiento de modificaciones para mejorar el rendimiento
+        'sqlite:///' + os.path.join(basedir, 'matute.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}
 
-# Configuración para el entorno de desarrollo
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    JWT_BLACKLIST_ENABLED = True
+    JWT_BLACKLIST_TOKEN_CHECKS = ['access', 'refresh']
+    # Cookies httpOnly para web + Bearer header para SPA/Flutter
+    JWT_TOKEN_LOCATION = ['cookies', 'headers']
+    JWT_ACCESS_COOKIE_NAME = 'mg_access'
+    JWT_REFRESH_COOKIE_NAME = 'mg_refresh'
+    JWT_ACCESS_COOKIE_PATH = '/'
+    JWT_REFRESH_COOKIE_PATH = '/auth'  # solo enviada al endpoint de refresh
+    JWT_COOKIE_SECURE = False  # en prod debe ser True (override en ConfigProduccion)
+    JWT_COOKIE_HTTPONLY = True
+    JWT_COOKIE_SAMESITE = 'Lax'
+    JWT_COOKIE_CSRF_PROTECT = False  # CSRF mitigado por SameSite + sesión Flask
+
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
+
+    RATELIMIT_STORAGE_URI = os.environ.get('REDIS_URL') or 'memory://'
+    RATELIMIT_DEFAULT = '300 per hour'
+
+    APP_VERSION = '1.0.0'
+
+
 class ConfigDesarrollo(Config):
-    # Activamos el modo de depuración para ver errores detallados
     DEBUG = True
+    ENV = 'development'
 
-# Configuración para el entorno de pruebas
+
 class ConfigPruebas(Config):
-    # Activamos el modo de pruebas
     TESTING = True
-    # Usamos una base de datos en memoria para pruebas
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=5)
 
-# Configuración para el entorno de producción
+
 class ConfigProduccion(Config):
-    # Aquí irían configuraciones específicas para producción
-    pass
+    DEBUG = False
+    ENV = 'production'
+    JWT_COOKIE_SECURE = True
+    JWT_COOKIE_CSRF_PROTECT = True
 
-# Diccionario que mapea los nombres de los entornos a sus clases de configuración
+
 config = {
-    'desarrollo': ConfigDesarrollo,  # Entorno de desarrollo local
-    'pruebas': ConfigPruebas,        # Entorno para ejecutar pruebas
-    'produccion': ConfigProduccion,  # Entorno para el servidor en producción
-    'default': ConfigDesarrollo      # Configuración por defecto
-} 
+    'desarrollo': ConfigDesarrollo,
+    'pruebas': ConfigPruebas,
+    'produccion': ConfigProduccion,
+    'default': ConfigDesarrollo,
+}
