@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/static/img/logo-navy.png" alt="Matute Guide — Guía del campus" height="120" />
+  <img src="app/static/img/repo-banner.png" alt="Matute Guide — Campus navigation & smart scheduling" />
 </p>
 
 # Matute Guide
