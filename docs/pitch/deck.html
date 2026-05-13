@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Matute Guide · Pitch deck</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;700&family=Lexend:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-950: #0B1423; --navy-900: #031633; --navy-800: #172846;
+    --navy-700: #233C5B; --navy-500: #3C61A5; --navy-400: #6DB4D2;
+    --navy-200: #CFE2FF; --navy-100: #E8F1FF;
+    --surface-0: #FFFFFF; --surface-100: #F8F9FA; --surface-150: #F1F3F5;
+    --ink-900: #212529; --ink-700: #495057; --ink-600: #6C757D;
+    --ink-500: #9899A8; --ink-400: #ADB5BD; --line-200: #E9ECEF;
+    --success: #28A745; --warning: #F2B705; --danger: #DC3545; --info: #0D6EFD;
+    --warning-bg: #FEF7E0; --success-bg: #E6F4EA; --info-bg: #E7F0FF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    color: var(--ink-900);
+    background: var(--ink-400);
+  }
+
+  /* Cada slide es 1920×1080 (16:9 a 1080p) */
+  .slide {
+    width: 1920px;
+    height: 1080px;
+    page-break-after: always;
+    page-break-inside: avoid;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-0);
+    margin: 24px auto;
+  }
+  .slide--dark   { background: var(--navy-800); color: var(--surface-0); }
+  .slide--navy   { background: var(--navy-950); color: var(--surface-0); }
+  .slide--soft   { background: var(--surface-100); }
+
+  /* Cabecera consistente en todos los slides */
+  .slide__head {
+    position: absolute; top: 48px; left: 80px; right: 80px;
+    display: flex; justify-content: space-between; align-items: center;
+    font: 500 14px/1 'DM Mono', monospace;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-500);
+  }
+  .slide--dark .slide__head, .slide--navy .slide__head {
+    color: var(--navy-400);
+  }
+  .slide__brand { display: flex; align-items: center; gap: 12px; }
+  .slide__brand img { height: 28px; }
+  .slide__num { font-weight: 700; letter-spacing: 0.16em; }
+
+  /* Contenedor principal */
+  .slide__body {
+    position: absolute; top: 144px; left: 80px; right: 80px; bottom: 80px;
+    display: flex; flex-direction: column;
+  }
+
+  /* Tipografía */
+  h1, h2, h3 { font-family: 'Lexend', sans-serif; font-weight: 700;
+              letter-spacing: -0.02em; }
+  h1 { font-size: 96px; line-height: 1; }
+  h2 { font-size: 64px; line-height: 1.05; margin-bottom: 32px; }
+  h3 { font-size: 36px; line-height: 1.2; }
+  .eyebrow { font: 700 14px/1 'DM Mono', monospace; letter-spacing: 0.18em;
+             text-transform: uppercase; color: var(--navy-500);
+             margin-bottom: 24px; }
+  .slide--dark .eyebrow, .slide--navy .eyebrow { color: var(--navy-400); }
+  .lead { font-size: 28px; line-height: 1.4; max-width: 1100px;
+          color: var(--ink-700); }
+  .slide--dark .lead, .slide--navy .lead { color: var(--navy-200); }
+  .mono { font-family: 'DM Mono', monospace; }
+
+  /* Slide 1 — portada */
+  .cover {
+    background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-800) 100%);
+    color: var(--surface-0);
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 120px;
+    position: relative;
+  }
+  .cover::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+  .cover__logo { width: 320px; margin-bottom: 60px; position: relative; z-index: 2; }
+  .cover h1 { font-size: 140px; margin-bottom: 24px; position: relative; z-index: 2; }
+  .cover__sub { font-size: 36px; color: var(--navy-200); max-width: 1200px;
+                position: relative; z-index: 2; line-height: 1.35; }
+  .cover__meta {
+    position: absolute; bottom: 80px; left: 120px; right: 120px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    z-index: 2;
+  }
+  .cover__pill {
+    font: 700 16px/1 'DM Mono', monospace; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--navy-200);
+    padding: 14px 28px; border: 1px solid var(--navy-500); border-radius: 999px;
+  }
+  .cover__credit {
+    font: 500 16px 'DM Mono', monospace; color: var(--navy-300);
+    text-align: right; line-height: 1.6;
+  }
+
+  /* Stat strip */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 48px; }
+  .stat {
+    background: var(--surface-100); padding: 32px;
+    border-radius: 12px; border-left: 4px solid var(--navy-800);
+  }
+  .slide--dark .stat, .slide--navy .stat {
+    background: rgba(255,255,255,0.06); border-left-color: var(--navy-400);
+  }
+  .stat__num {
+    font: 700 64px/1 'Lexend'; color: var(--navy-800);
+    letter-spacing: -0.02em;
+  }
+  .slide--dark .stat__num, .slide--navy .stat__num { color: var(--surface-0); }
+  .stat__lbl {
+    font: 700 13px/1 'DM Mono', monospace; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-600); margin-top: 12px;
+  }
+  .slide--dark .stat__lbl, .slide--navy .stat__lbl { color: var(--navy-300); }
+
+  /* Two column */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 80px; flex: 1;
+    align-items: center;
+  }
+  .two-col--img-right { grid-template-columns: 1fr 1.1fr; }
+
+  /* Comparison table (Antes vs Con MG) */
+  .compare { width: 100%; border-collapse: collapse; margin-top: 32px; }
+  .compare th, .compare td {
+    text-align: left; padding: 22px 24px;
+    font-size: 22px; line-height: 1.4;
+    border-bottom: 1px solid var(--line-200);
+  }
+  .compare th {
+    font: 700 14px/1 'DM Mono', monospace; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-600);
+    background: var(--surface-100);
+  }
+  .compare td.before { color: var(--ink-700); }
+  .compare td.after { color: var(--navy-800); font-weight: 600; }
+  .compare td.icon { width: 60px; text-align: center; font-size: 28px; }
+
+  /* Screenshot frame */
+  .shot {
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(11, 20, 35, 0.32);
+    border: 1px solid rgba(0,0,0,0.08);
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    object-position: top center;
+  }
+  .shot--browser {
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--ink-300);
+  }
+  .browser-bar {
+    background: #E5E7EB;
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--line-200);
+  }
+  .browser-bar__dot { width: 14px; height: 14px; border-radius: 50%; background: #D1D5DB; }
+  .browser-bar__url {
+    flex: 1; background: #FAFAFB; border-radius: 6px;
+    padding: 6px 14px; margin-left: 16px;
+    font: 500 14px 'DM Mono', monospace; color: var(--ink-600);
+  }
+
+  .shot-frame {
+    background: var(--ink-900); border-radius: 14px;
+    padding: 0; overflow: hidden;
+    box-shadow: 0 32px 80px rgba(11,20,35,0.42);
+  }
+
+  /* Architecture diagram */
+  .arch {
+    display: flex; flex-direction: column; gap: 32px; flex: 1;
+    justify-content: center;
+  }
+  .arch__row {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 32px;
+    align-items: center;
+  }
+  .arch__box {
+    background: var(--surface-100); border: 1px solid var(--line-200);
+    border-radius: 16px; padding: 28px;
+  }
+  .arch__box--accent {
+    background: var(--navy-800); color: var(--surface-0); border: none;
+  }
+  .arch__box h4 {
+    font: 700 22px 'Lexend'; margin-bottom: 16px;
+  }
+  .arch__box ul { list-style: none; }
+  .arch__box li {
+    font-size: 16px; line-height: 1.6; padding-left: 20px; position: relative;
+  }
+  .arch__box li::before {
+    content: '·'; position: absolute; left: 8px; font-weight: 700;
+  }
+  .arch__arrow {
+    font: 700 32px monospace; color: var(--navy-500);
+  }
+
+  /* Stack badges */
+  .stack { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 32px; }
+  .stack__pill {
+    background: var(--surface-100); padding: 18px 28px;
+    border-radius: 999px; border: 1px solid var(--line-200);
+    font-weight: 600; font-size: 20px; color: var(--ink-800);
+  }
+  .stack__pill--accent {
+    background: var(--navy-800); color: var(--surface-0); border: none;
+  }
+  .stack__pill--success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+  .stack__pill--warning { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
+
+  /* Big number/stat callout */
+  .callout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; flex: 1; align-items: stretch; }
+  .callout {
+    background: var(--surface-100); border-radius: 16px; padding: 40px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    border-top: 6px solid var(--navy-800);
+  }
+  .callout__icon { font-size: 56px; margin-bottom: 16px; }
+  .callout__title { font: 700 32px 'Lexend'; margin-bottom: 12px; color: var(--navy-800); }
+  .callout__desc { font-size: 20px; line-height: 1.5; color: var(--ink-700); }
+  .callout--success { border-top-color: var(--success); }
+  .callout--success .callout__title { color: var(--success); }
+  .callout--warning { border-top-color: var(--warning); }
+  .callout--warning .callout__title { color: var(--warning); }
+  .callout--info { border-top-color: var(--info); }
+  .callout--info .callout__title { color: var(--info); }
+
+  /* Phone mockup centered */
+  .phone-row {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 80px;
+    align-items: center; flex: 1;
+  }
+  .phone-mockup { width: 480px; height: auto; margin: 0 auto; display: block; }
+
+  /* Tests pill grid */
+  .test-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 24px; margin-top: 32px; }
+  .test-pill {
+    padding: 24px 32px; background: var(--surface-100); border-radius: 12px;
+    border-left: 6px solid var(--success);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .test-pill__name { font-weight: 600; font-size: 22px; }
+  .test-pill__count {
+    font: 700 28px 'Lexend'; color: var(--success);
+  }
+
+  /* Final CTA slide */
+  .cta {
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: center; text-align: center; padding: 0 200px;
+  }
+  .cta h1 { font-size: 120px; margin-bottom: 32px; }
+  .cta__url {
+    margin-top: 56px; font: 500 28px 'DM Mono', monospace;
+    color: var(--navy-200);
+    padding: 20px 40px; border: 2px solid var(--navy-500);
+    border-radius: 12px;
+  }
+  .cta__demo {
+    display: grid; grid-template-columns: repeat(2, auto); gap: 16px 32px;
+    margin-top: 56px; justify-content: center;
+    font: 500 22px 'DM Mono', monospace; color: var(--navy-200);
+  }
+  .cta__demo strong { color: var(--surface-0); font-weight: 700; }
+
+  @media print {
+    body { background: var(--surface-0); }
+    .slide { margin: 0; box-shadow: none; }
+    @page { size: 1920px 1080px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1 — Portada                                            -->
+<!-- ============================================================ -->
+<section class="slide cover">
+  <img class="cover__logo" src="../../app/static/img/logo-white.png" alt="Matute Guide" />
+  <h1>Matute Guide</h1>
+  <p class="cover__sub">
+    La plataforma escolar que unifica horarios, salones,
+    trámites y comunidad para la red Universidad de Guadalajara.
+  </p>
+  <div class="cover__meta">
+    <span class="cover__pill">Pitch deck · v1.0 · Mayo 2026</span>
+    <div class="cover__credit">
+      Plantel piloto: <strong style="color:var(--surface-0)">CUValles</strong><br>
+      github.com/MapSchool1/all
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2 — Problema                                           -->
+<!-- ============================================================ -->
+<section class="slide">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">02 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">El problema</div>
+    <h2>En CUValles, cada cosa vive en un<br>lado distinto.</h2>
+    <p class="lead">
+      El horario impreso. El kárdex en una ventanilla. El mapa en un PDF.
+      Los anuncios en un WhatsApp del grupo. Cada decisión cotidiana del
+      estudiante implica abrir 3 apps, llamar a 2 personas o caminar a
+      otra ventanilla.
+    </p>
+    <div class="stats">
+      <div class="stat"><div class="stat__num">5</div><div class="stat__lbl">canales separados</div></div>
+      <div class="stat"><div class="stat__num">3+</div><div class="stat__lbl">días para un trámite</div></div>
+      <div class="stat"><div class="stat__num">0</div><div class="stat__lbl">detección de conflictos</div></div>
+      <div class="stat"><div class="stat__num">~40%</div><div class="stat__lbl">de quejas por desinformación</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3 — Solución (antes vs después)                        -->
+<!-- ============================================================ -->
+<section class="slide slide--soft">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">03 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">La solución</div>
+    <h2>Una sola plataforma. Web y Android.</h2>
+    <table class="compare">
+      <thead>
+        <tr><th>Antes</th><th></th><th>Con Matute Guide</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="before">Horario impreso, desactualizado</td>
+          <td class="icon">→</td>
+          <td class="after">Horario en tiempo real con detección automática de conflictos</td>
+        </tr>
+        <tr>
+          <td class="before">Te pierdes buscando un edificio</td>
+          <td class="icon">→</td>
+          <td class="after">Mapa interactivo con cómo-llegar y disponibilidad de salones ahora</td>
+        </tr>
+        <tr>
+          <td class="before">Filas para una constancia</td>
+          <td class="icon">→</td>
+          <td class="after">Trámite en línea con folio y timeline de seguimiento</td>
+        </tr>
+        <tr>
+          <td class="before">Te enteras tarde de un parcial</td>
+          <td class="icon">→</td>
+          <td class="after">Notificaciones SSE en web y push local en la app</td>
+        </tr>
+        <tr>
+          <td class="before">El admin maneja todo en Excel</td>
+          <td class="icon">→</td>
+          <td class="after">Panel con KPIs, CRUD y export CSV</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4 — Cómo se ve (landing)                               -->
+<!-- ============================================================ -->
+<section class="slide slide--soft">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">04 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Cómo se ve · Landing</div>
+    <h2>Bienvenida con estadísticas reales.</h2>
+    <div class="shot-frame" style="margin-top: 16px;">
+      <div class="browser-bar">
+        <span class="browser-bar__dot" style="background:#FF6058"></span>
+        <span class="browser-bar__dot" style="background:#FFBD2E"></span>
+        <span class="browser-bar__dot" style="background:#27CA3F"></span>
+        <span class="browser-bar__url">localhost:5001/</span>
+      </div>
+      <img class="shot" src="shots/landing.png" alt="Landing"
+           style="max-height: 720px;" />
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5 — Estudiante (el caso estrella)                      -->
+<!-- ============================================================ -->
+<section class="slide">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">05 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Para el estudiante · Dashboard</div>
+    <h2>Todo el ciclo escolar en cinco tabs.</h2>
+    <div class="two-col" style="margin-top: 24px;">
+      <div>
+        <p class="lead" style="margin-bottom: 32px;">
+          Resumen, horario, calificaciones, asistencia y trámites.
+          Bienvenida personalizada con stat chips de materias, créditos,
+          horas semanales y conflictos.
+        </p>
+        <div style="background: var(--warning-bg); border-left: 6px solid var(--warning);
+                    padding: 24px; border-radius: 8px;">
+          <div style="font: 700 14px/1 'DM Mono'; letter-spacing: 0.12em;
+                      text-transform: uppercase; color: var(--warning); margin-bottom: 8px;">
+            Caso estrella
+          </div>
+          <p style="font-size: 22px; line-height: 1.5; color: var(--ink-800);">
+            El horario de Álvaro tiene un <strong>conflicto real el miércoles 11:00</strong>:
+            Programación Web (LAB-4) ↔ Bases de Datos II (LAB-2).<br>
+            La plataforma lo detecta automáticamente y bloquea la publicación.
+          </p>
+        </div>
+      </div>
+      <div class="shot-frame">
+        <img class="shot" src="shots/student-dashboard.png" alt="Dashboard estudiante"
+             style="max-height: 760px;" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6 — Horario con conflicto destacado                    -->
+<!-- ============================================================ -->
+<section class="slide slide--soft">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">06 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Schedule grid · color-coded</div>
+    <h2>Bloques por tipo, conflicto en amarillo pulsante.</h2>
+    <div class="shot-frame" style="margin-top: 16px;">
+      <img class="shot" src="shots/student-horario.png" alt="Horario con conflicto"
+           style="max-height: 800px;" />
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7 — Mapa + salones                                     -->
+<!-- ============================================================ -->
+<section class="slide">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">07 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Campus · Mapa SVG interactivo</div>
+    <h2>Encuentra cualquier salón en segundos.</h2>
+    <div class="two-col" style="margin-top: 24px;">
+      <div class="shot-frame">
+        <img class="shot" src="shots/mapa.png" alt="Mapa del campus"
+             style="max-height: 760px;" />
+      </div>
+      <div class="shot-frame">
+        <img class="shot" src="shots/salon-detail.png" alt="Detalle de salón"
+             style="max-height: 760px;" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8 — Móvil mockup                                       -->
+<!-- ============================================================ -->
+<section class="slide slide--dark">
+  <div class="slide__head">
+    <span class="slide__brand">
+      <img src="../../app/static/img/icon-white.png" alt=""> Matute Guide
+    </span>
+    <span class="slide__num">08 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="phone-row">
+      <div>
+        <div class="eyebrow">App Android nativa</div>
+        <h2 style="font-size: 72px; color: var(--surface-0);">
+          Tu campus<br>en el bolsillo.
+        </h2>
+        <p class="lead" style="margin-top: 32px; max-width: 600px;">
+          Flutter 3.41 · 21 pantallas · APK release de 19.3 MB ·
+          notificaciones locales con polling · refresh token automático.
+        </p>
+        <div class="stack" style="margin-top: 40px;">
+          <span class="stack__pill" style="background: rgba(255,255,255,0.08); color: var(--surface-0); border: 1px solid var(--navy-500);">Flutter 3.41</span>
+          <span class="stack__pill" style="background: rgba(255,255,255,0.08); color: var(--surface-0); border: 1px solid var(--navy-500);">GoRouter</span>
+          <span class="stack__pill" style="background: rgba(255,255,255,0.08); color: var(--surface-0); border: 1px solid var(--navy-500);">Provider</span>
+          <span class="stack__pill" style="background: rgba(255,255,255,0.08); color: var(--surface-0); border: 1px solid var(--navy-500);">Local push</span>
+          <span class="stack__pill" style="background: rgba(255,255,255,0.08); color: var(--surface-0); border: 1px solid var(--navy-500);">minSdk 21</span>
+        </div>
+      </div>
+      <div>
+        <img class="phone-mockup" src="shots/mobile-mockup.png" alt="Mockup móvil" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9 — Panel admin                                        -->
+<!-- ============================================================ -->
+<section class="slide">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">09 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Para administración · Panel completo</div>
+    <h2>KPIs, CRUD, reportes y audit log.</h2>
+    <div class="shot-frame" style="margin-top: 16px;">
+      <img class="shot" src="shots/admin-dashboard.png" alt="Admin dashboard"
+           style="max-height: 800px;" />
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10 — Componentes (sistema de diseño)                   -->
+<!-- ============================================================ -->
+<section class="slide slide--soft">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">10 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">MapSchool design system v1.0.0</div>
+    <h2>27 componentes, cero hex hardcoded.</h2>
+    <div class="two-col" style="margin-top: 24px;">
+      <div>
+        <p class="lead" style="margin-bottom: 24px;">
+          Sistema de diseño construido específicamente para el producto:
+          tokens CSS, paleta navy, tipografía Lexend / DM Sans / DM Mono,
+          grid 4px y WCAG AA en todos los pares texto/fondo.
+        </p>
+        <div class="stack">
+          <span class="stack__pill stack__pill--accent">navy #172846</span>
+          <span class="stack__pill">Lexend display</span>
+          <span class="stack__pill">DM Sans body</span>
+          <span class="stack__pill">DM Mono mono</span>
+          <span class="stack__pill stack__pill--success">WCAG AA</span>
+        </div>
+      </div>
+      <div class="shot-frame">
+        <img class="shot" src="shots/components-demo.png" alt="Components demo"
+             style="max-height: 760px; object-position: top;" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 11 — Arquitectura técnica                              -->
+<!-- ============================================================ -->
+<section class="slide slide--navy">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-white.png" alt=""> Matute Guide</span>
+    <span class="slide__num">11 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Arquitectura</div>
+    <h2 style="color: var(--surface-0);">Tres capas. Una fuente de verdad.</h2>
+    <div class="arch" style="margin-top: 32px;">
+      <div class="arch__row">
+        <div class="arch__box" style="background: rgba(255,255,255,0.06); border-color: var(--navy-500); color: var(--surface-0);">
+          <h4 style="color: var(--surface-0);">🌐 Web · Jinja + CSS + Vanilla JS</h4>
+          <ul style="color: var(--navy-200);">
+            <li>45 plantillas · 27 macros</li>
+            <li>14 páginas · /components demo</li>
+            <li>SSE en tiempo real · cookies httpOnly</li>
+            <li>WCAG AA + skip-link + aria-*</li>
+          </ul>
+        </div>
+        <div class="arch__arrow" style="color: var(--navy-400);">⇄</div>
+        <div class="arch__box" style="background: rgba(255,255,255,0.06); border-color: var(--navy-500); color: var(--surface-0);">
+          <h4 style="color: var(--surface-0);">📱 Android · Flutter 3.41</h4>
+          <ul style="color: var(--navy-200);">
+            <li>21 pantallas · MapColors mirror</li>
+            <li>GoRouter + Provider + http</li>
+            <li>flutter_local_notifications</li>
+            <li>APK release 19.3 MB</li>
+          </ul>
+        </div>
+      </div>
+      <div class="arch__row">
+        <div></div>
+        <div class="arch__arrow" style="color: var(--navy-400);">↓</div>
+        <div></div>
+      </div>
+      <div class="arch__row" style="grid-template-columns: 1fr;">
+        <div class="arch__box" style="background: var(--navy-800); border: 2px solid var(--navy-500); color: var(--surface-0);">
+          <h4 style="color: var(--surface-0); font-size: 28px;">⚙️ Backend · Flask 3 + SQLAlchemy</h4>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 16px;">
+            <ul style="color: var(--navy-200);">
+              <li>13 blueprints REST</li>
+              <li>19 modelos en 7 dominios</li>
+              <li>JWT 1h+30d con rotación + blacklist</li>
+            </ul>
+            <ul style="color: var(--navy-200);">
+              <li>Audit log inmutable</li>
+              <li>Soft-delete + Rate limiting</li>
+              <li>Detección de conflictos automática</li>
+            </ul>
+            <ul style="color: var(--navy-200);">
+              <li>SSE notificaciones</li>
+              <li>SQLite dev / Postgres prod</li>
+              <li>Password reset con token</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 12 — Calidad / Tests                                   -->
+<!-- ============================================================ -->
+<section class="slide slide--soft">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">12 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Calidad</div>
+    <h2>58 tests verde · 0 issues de análisis estático.</h2>
+    <div class="callout-grid" style="margin-top: 32px;">
+      <div class="callout callout--success">
+        <div>
+          <div class="callout__icon">✓</div>
+          <h3 class="callout__title">15 pytest</h3>
+          <p class="callout__desc">
+            Health, auth con roles + rotación de tokens, salones,
+            detección del conflicto Mié 11:00 + dashboard admin.
+          </p>
+        </div>
+        <div style="font: 700 14px 'DM Mono'; color: var(--success);
+                    letter-spacing: 0.12em; text-transform: uppercase;">Backend</div>
+      </div>
+      <div class="callout callout--info">
+        <div>
+          <div class="callout__icon">⊙</div>
+          <h3 class="callout__title">43 Dart</h3>
+          <p class="callout__desc">
+            24 unit tests de modelos + 19 widget tests con tap callback.
+            Detectaron y arreglaron un bug real de overflow en producción.
+          </p>
+        </div>
+        <div style="font: 700 14px 'DM Mono'; color: var(--info);
+                    letter-spacing: 0.12em; text-transform: uppercase;">Flutter</div>
+      </div>
+      <div class="callout callout--warning">
+        <div>
+          <div class="callout__icon">⟶</div>
+          <h3 class="callout__title">E2E listo</h3>
+          <p class="callout__desc">
+            Integration test que arranca app, login con seed user,
+            valida que el conflicto se ve en la UI.
+          </p>
+        </div>
+        <div style="font: 700 14px 'DM Mono'; color: var(--warning);
+                    letter-spacing: 0.12em; text-transform: uppercase;">Integration</div>
+      </div>
+    </div>
+    <div class="stack" style="margin-top: 40px;">
+      <span class="stack__pill stack__pill--success">flutter analyze: 0 issues</span>
+      <span class="stack__pill stack__pill--success">pytest: 15 / 15 verde</span>
+      <span class="stack__pill stack__pill--success">flutter test: 43 / 43 verde</span>
+      <span class="stack__pill">Audit log inmutable</span>
+      <span class="stack__pill">Soft-delete</span>
+      <span class="stack__pill">httpOnly cookies</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 13 — Roadmap                                           -->
+<!-- ============================================================ -->
+<section class="slide">
+  <div class="slide__head">
+    <span class="slide__brand"><img src="../../app/static/img/icon-navy.png" alt=""> Matute Guide</span>
+    <span class="slide__num">13 / 14</span>
+  </div>
+  <div class="slide__body">
+    <div class="eyebrow">Roadmap</div>
+    <h2>Lo que está hoy · Lo que sigue.</h2>
+    <div class="two-col" style="margin-top: 32px;">
+      <div>
+        <h3 style="color: var(--success); font-size: 28px; margin-bottom: 24px;">
+          ✓ Listo en este release
+        </h3>
+        <ul style="font-size: 22px; line-height: 1.8; color: var(--ink-800); padding-left: 24px;">
+          <li>Backend Flask con 13 blueprints + JWT seguro</li>
+          <li>14 páginas web con MapSchool design system</li>
+          <li>App Android Flutter con 21 pantallas</li>
+          <li>SSE + push local + audit log</li>
+          <li>Detección de conflictos en tiempo real</li>
+          <li>58 tests + WCAG AA</li>
+          <li>Trámites con folio + timeline</li>
+          <li>Export CSV de reportes</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="color: var(--info); font-size: 28px; margin-bottom: 24px;">
+          ⟶ Siguiente sprint
+        </h3>
+        <ul style="font-size: 22px; line-height: 1.8; color: var(--ink-800); padding-left: 24px;">
+          <li>Migración a PostgreSQL en producción</li>
+          <li>Firma release del APK con keystore propio</li>
+          <li>CI/CD GitHub Actions: tests + build APK por PR</li>
+          <li>Export PDF de reportes</li>
+          <li>Drag-and-drop real en plan de estudios admin</li>
+          <li>Backups automáticos del audit log</li>
+          <li>Onboarding del segundo plantel piloto</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 14 — CTA / Contacto                                    -->
+<!-- ============================================================ -->
+<section class="slide cover cta">
+  <h1>Pruébalo ahora.</h1>
+  <p class="cover__sub" style="text-align: center; max-width: 1300px;">
+    Clona el repo, corre <span class="mono" style="color: var(--surface-0);">python seed.py</span>
+    y abre <span class="mono" style="color: var(--surface-0);">localhost:5001</span> en 3 minutos.
+  </p>
+  <div class="cta__url">github.com/MapSchool1/all</div>
+  <div class="cta__demo">
+    <span>Estudiante con conflicto:</span>
+    <strong>alvaro.diaz@alumnos.udg.mx · Estudiante1!</strong>
+    <span>Admin con KPIs:</span>
+    <strong>admin@udg.mx · Admin1234!</strong>
+    <span>Profesor para pasar lista:</span>
+    <strong>jorge.mendez@udg.mx · Profesor1!</strong>
+  </div>
+</section>
+
+</body>
+</html>
