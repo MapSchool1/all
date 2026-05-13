@@ -1,0 +1,95 @@
+{% extends 'admin/_admin_base.html' %}
+{% from 'components/_macros.html' import stat_card, status_badge %}
+{% block title %}Panel · {{ user.nombre }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-2">Panel administrativo</h1>
+<p class="b-16 text-muted mb-6">Resumen del plantel · {{ user.plantel.nombre if user.plantel else '—' }}</p>
+
+<div class="grid grid-3" id="kpi-grid">
+  <div class="stat-card"><div class="stat-card__label">Estudiantes activos</div><div class="stat-card__value">…</div></div>
+  <div class="stat-card"><div class="stat-card__label">Horarios publicados</div><div class="stat-card__value">…</div></div>
+  <div class="stat-card"><div class="stat-card__label">Conflictos abiertos</div><div class="stat-card__value">…</div></div>
+  <div class="stat-card"><div class="stat-card__label">Asistencia promedio</div><div class="stat-card__value">…</div></div>
+  <div class="stat-card"><div class="stat-card__label">Trámites pendientes</div><div class="stat-card__value">…</div></div>
+  <div class="stat-card"><div class="stat-card__label">Nuevos hoy</div><div class="stat-card__value">…</div></div>
+</div>
+
+<div class="grid mt-8" style="grid-template-columns: 2fr 1fr; gap: var(--s-6);">
+  <section>
+    <h2 class="d-24 mb-3">Trámites pendientes</h2>
+    <div id="tramites-pendientes"><p class="text-muted">Cargando…</p></div>
+  </section>
+  <section>
+    <h2 class="d-24 mb-3">Audit log reciente</h2>
+    <div id="audit-list"><p class="text-muted">Cargando…</p></div>
+  </section>
+</div>
+
+<script>
+async function loadDashboard() {
+  try {
+    const k = await api('/api/v1/stats/dashboard');
+    const grid = document.getElementById('kpi-grid');
+    const sym = d => d > 0 ? '▲' : (d < 0 ? '▼' : '—');
+    const cls = d => d > 0 ? 'stat-card__delta--up' : (d < 0 ? 'stat-card__delta--down' : 'stat-card__delta--flat');
+    grid.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-card__label">Estudiantes activos</div>
+        <div class="stat-card__value">${k.estudiantes_activos.total.toLocaleString('es-MX')}</div>
+        <div class="stat-card__meta"><span class="stat-card__delta ${cls(k.estudiantes_activos.delta)}">${sym(k.estudiantes_activos.delta)} ${Math.abs(k.estudiantes_activos.delta)}%</span><span>${k.estudiantes_activos.periodo}</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Horarios publicados</div>
+        <div class="stat-card__value">${k.horarios_publicados.total} / ${k.horarios_publicados.meta}</div>
+        <div class="stat-card__meta"><span class="stat-card__delta ${cls(k.horarios_publicados.delta)}">${sym(k.horarios_publicados.delta)} ${Math.abs(k.horarios_publicados.delta)}</span><span>${k.horarios_publicados.periodo}</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Conflictos abiertos</div>
+        <div class="stat-card__value">${k.conflictos_abiertos.total}</div>
+        <div class="stat-card__meta"><span>${k.conflictos_abiertos.periodo}</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Asistencia promedio</div>
+        <div class="stat-card__value">${k.asistencia_promedio.valor}%</div>
+        <div class="stat-card__meta"><span>${k.asistencia_promedio.periodo}</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Trámites pendientes</div>
+        <div class="stat-card__value">${k.tramites_pendientes.total}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Nuevos hoy</div>
+        <div class="stat-card__value">${k.nuevos_hoy.usuarios + k.nuevos_hoy.tramites}</div>
+        <div class="stat-card__meta"><span>${k.nuevos_hoy.usuarios} usuarios · ${k.nuevos_hoy.tramites} trámites</span></div>
+      </div>
+    `;
+  } catch (e) { toast('No se pudieron cargar los KPIs', 'danger'); }
+
+  try {
+    const t = await api('/api/v1/tramites?estado=recibido&per_page=5');
+    const wrap = document.getElementById('tramites-pendientes');
+    if (!t.data.length) {
+      wrap.innerHTML = '<p class="text-muted">Sin trámites pendientes.</p>'; return;
+    }
+    wrap.innerHTML = '<table class="data-table"><thead><tr><th>Folio</th><th>Solicitante</th><th>Tipo</th><th>Fecha</th></tr></thead><tbody>' +
+      t.data.map(x => `<tr><td><strong>${x.folio}</strong></td><td>${x.solicitante?.nombre_completo || '—'}</td><td>${x.tipo?.nombre || '—'}</td><td class="b-12 text-muted">${new Date(x.created_at).toLocaleDateString('es-MX')}</td></tr>`).join('') +
+      '</tbody></table>';
+  } catch (_) {}
+
+  try {
+    const a = await api('/api/v1/audit?per_page=10');
+    const wrap = document.getElementById('audit-list');
+    if (!a.data.length) {
+      wrap.innerHTML = '<p class="text-muted">Sin actividad reciente.</p>'; return;
+    }
+    wrap.innerHTML = a.data.map(x => `
+      <div class="card mb-2" style="padding: var(--s-3);">
+        <div class="b-12"><strong>${x.accion}</strong> · ${x.entidad || '—'}</div>
+        <div class="b-12 text-muted">${x.usuario || '—'} · ${new Date(x.created_at).toLocaleString('es-MX')}</div>
+      </div>`).join('');
+  } catch (_) {}
+}
+loadDashboard();
+</script>
+{% endblock %}

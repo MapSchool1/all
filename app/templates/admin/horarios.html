@@ -1,0 +1,151 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Horarios · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Horarios</h1>
+
+<div class="tabs-segmented mb-6" id="vista-tabs">
+  <button class="tabs-segmented__item active" data-vista="carrera">Por carrera</button>
+  <button class="tabs-segmented__item" data-vista="salon">Por salón</button>
+  <button class="tabs-segmented__item" data-vista="profesor">Por profesor</button>
+</div>
+
+<div data-pane="carrera">
+  <div class="flex gap-3 mb-4">
+    <select class="select" id="carrera" style="max-width: 280px;">
+      {% for c in carreras %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+    </select>
+    <select class="select" id="semestre" style="max-width: 120px;">
+      {% for s in range(1, 9) %}<option value="{{ s }}">Sem {{ s }}</option>{% endfor %}
+    </select>
+    <select class="select" id="periodo" style="max-width: 200px;">
+      {% for p in periodos %}<option value="{{ p.id }}" {% if p.activo %}selected{% endif %}>{{ p.clave }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--primary" id="btn-cargar-carrera">Cargar</button>
+  </div>
+  <div id="carrera-host"><p class="text-muted">Selecciona una carrera y semestre.</p></div>
+</div>
+
+<div data-pane="salon" class="hidden">
+  <div class="flex gap-3 mb-4">
+    <select class="select" id="salon-sel" style="max-width: 280px;">
+      <option value="">Selecciona salón…</option>
+    </select>
+    <button class="btn btn--primary" id="btn-cargar-salon">Cargar</button>
+  </div>
+  <div id="salon-host"><p class="text-muted">—</p></div>
+</div>
+
+<div data-pane="profesor" class="hidden">
+  <div class="flex gap-3 mb-4">
+    <select class="select" id="profesor-sel" style="max-width: 280px;">
+      {% for p in profesores %}<option value="{{ p.id }}">{{ p.nombre_completo }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--primary" id="btn-cargar-profesor">Cargar</button>
+  </div>
+  <div id="profesor-host"><p class="text-muted">—</p></div>
+</div>
+
+<script>
+document.querySelectorAll('#vista-tabs .tabs-segmented__item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#vista-tabs .tabs-segmented__item').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== b.dataset.vista));
+  });
+});
+
+function renderConsolidado(bloques, hostId) {
+  const dias = ['lun','mar','mie','jue','vie','sab'];
+  const lbl = {lun:'Lun',mar:'Mar',mie:'Mié',jue:'Jue',vie:'Vie',sab:'Sáb'};
+  const tipoCls = {tronco_comun:'tronco-comun',area_profesional:'area-profesional',laboratorio:'laboratorio',idiomas:'idiomas'};
+  const horas = Array.from({length:14},(_,i)=>i+7);
+  let html = '<div class="schedule-grid"><div class="schedule-grid__header">Hora</div>';
+  dias.forEach(d => html += `<div class="schedule-grid__header">${lbl[d]}</div>`);
+  horas.forEach(h => {
+    html += `<div class="schedule-grid__time">${('0'+h).slice(-2)}:00</div>`;
+    dias.forEach(d => {
+      const b = bloques.find(b => b.dia === d && parseInt(b.hora_inicio.split(':')[0]) === h);
+      if (b) {
+        const tcls = tipoCls[b.materia?.tipo] || 'tronco-comun';
+        const rows = parseInt(b.hora_fin.split(':')[0]) - h;
+        html += `<div class="schedule-grid__cell">
+          <button class="bloque bloque--${tcls}${b.conflicto?' bloque--conflicto':''}"
+            style="height: calc(90px * ${rows} - 2px); position: absolute; top: 2px; left: 2px; right: 2px; z-index: 2;"
+            data-materia="${(b.materia?.nombre||'—').replace(/"/g,'&quot;')}"
+            data-salon="${(b.salon?.codigo||'—').replace(/"/g,'&quot;')}"
+            data-profesor="${(b.profesor?.nombre_completo||'—').replace(/"/g,'&quot;')}"
+            data-hora="${b.hora_inicio} – ${b.hora_fin}">
+            <span class="bloque__titulo">${b.materia?.nombre_corto || b.materia?.nombre || '—'}</span>
+            <span class="bloque__sub">${b.salon?.codigo || ''}${b.user ? ' · ' + b.user.nombre_completo : ''}</span>
+            ${b.conflicto ? '<span class="bloque__conflicto-label">⚠ Conflicto</span>' : ''}
+          </button></div>`;
+      } else { html += '<div class="schedule-grid__cell"></div>'; }
+    });
+  });
+  html += '</div>';
+  document.getElementById(hostId).innerHTML = html;
+}
+
+document.getElementById('btn-cargar-carrera').addEventListener('click', async () => {
+  const carrera_id = document.getElementById('carrera').value;
+  const semestre = document.getElementById('semestre').value;
+  const periodo_id = document.getElementById('periodo').value;
+  try {
+    const r = await api(`/api/v1/horarios/admin/vista-carrera?carrera_id=${carrera_id}&semestre=${semestre}&periodo_id=${periodo_id}`);
+    if (!r.bloques_consolidados.length) {
+      document.getElementById('carrera-host').innerHTML = '<div class="empty"><div class="empty__icon">∅</div><div class="empty__title">Sin horarios</div><div class="empty__desc">No hay horarios publicados para esta combinación.</div></div>';
+      return;
+    }
+    document.getElementById('carrera-host').innerHTML = `<p class="b-14 text-muted mb-3">${r.horarios_count} horarios · ${r.conflictos_globales} conflictos</p>` ;
+    renderConsolidado(r.bloques_consolidados, 'carrera-host');
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+(async () => {
+  try {
+    const s = await fetch('/api/v1/salones').then(r => r.json());
+    document.getElementById('salon-sel').innerHTML += s.data.map(x => `<option value="${x.id}">${x.codigo} · ${x.nombre || ''}</option>`).join('');
+  } catch (_) {}
+})();
+
+document.getElementById('btn-cargar-salon').addEventListener('click', async () => {
+  const id = document.getElementById('salon-sel').value;
+  if (!id) return;
+  try {
+    const r = await api(`/api/v1/horarios/admin/vista-salon?salon_id=${id}`);
+    const dias = ['lun','mar','mie','jue','vie','sab'];
+    const lbl = {lun:'Lun',mar:'Mar',mie:'Mié',jue:'Jue',vie:'Vie',sab:'Sáb'};
+    const horas = Array.from({length:14},(_,i)=>i+7);
+    let html = '<div class="schedule-grid"><div class="schedule-grid__header">Hora</div>';
+    dias.forEach(d => html += `<div class="schedule-grid__header">${lbl[d]}</div>`);
+    const disp = r.disponibilidad_semana || {};
+    horas.forEach(h => {
+      html += `<div class="schedule-grid__time">${('0'+h).slice(-2)}:00</div>`;
+      dias.forEach(d => {
+        const ocup = (disp[d]||[]).find(b => parseInt(b.hora_inicio.split(':')[0]) === h);
+        if (ocup) {
+          html += `<div class="schedule-grid__cell"><div class="bloque bloque--tronco-comun" style="height: calc(90px * 2 - 2px); position: absolute; top: 2px; left: 2px; right: 2px; z-index: 2;"><span class="bloque__titulo">${ocup.materia || 'Ocupado'}</span><span class="bloque__sub">${ocup.profesor || ''}</span></div></div>`;
+        } else {
+          html += '<div class="schedule-grid__cell"></div>';
+        }
+      });
+    });
+    html += '</div>';
+    document.getElementById('salon-host').innerHTML = html;
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+document.getElementById('btn-cargar-profesor').addEventListener('click', async () => {
+  const id = document.getElementById('profesor-sel').value;
+  try {
+    const r = await api(`/api/v1/horarios/admin/vista-profesor?profesor_id=${id}`);
+    if (!r.bloques.length) {
+      document.getElementById('profesor-host').innerHTML = '<div class="empty"><div class="empty__title">Sin clases asignadas</div></div>';
+      return;
+    }
+    renderConsolidado(r.bloques, 'profesor-host');
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+</script>
+{% endblock %}

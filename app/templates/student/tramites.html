@@ -1,0 +1,230 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import status_badge, empty_state %}
+{% block title %}Mis trámites{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="d-32" style="margin:0;">Mis trámites</h1>
+    <button class="btn btn--primary" data-dialog-open="dlg-tramite">+ Nuevo trámite</button>
+  </div>
+
+  {% if tramites %}
+    <table class="data-table">
+      <thead><tr><th>Folio</th><th>Tipo</th><th>Descripción</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+      <tbody>
+        {% for t in tramites %}
+          <tr>
+            <td><strong>{{ t.folio }}</strong></td>
+            <td>{{ t.tipo_tramite.nombre if t.tipo_tramite else '—' }}</td>
+            <td class="text-muted">{{ (t.descripcion or '—')[:60] }}</td>
+            <td>{{ status_badge(t.estado) }}</td>
+            <td class="b-12 text-muted">{{ t.created_at.strftime('%d %b %Y') }}</td>
+            <td>
+              <a class="btn btn--ghost btn--sm"
+                 href="{{ url_for('web_student.tramite_detalle', t_id=t.id) }}">
+                Ver detalle →
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    {{ empty_state('Aún no tienes trámites',
+        'Solicita tu primer trámite con el botón superior.', icon='📋') }}
+  {% endif %}
+</div>
+
+{# ============== Modal multi-step (4 pasos) ============== #}
+<div class="dialog-backdrop" id="dlg-tramite">
+  <div class="dialog dialog--lg">
+    <div class="dialog__header">
+      <span class="dialog__title">Nuevo trámite · <span id="step-label">Paso 1 de 4</span></span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog__body">
+      <div class="flex gap-2 mb-6" style="font-size: 11px; font-weight: 700;">
+        <div data-step="1" class="step-chip step-active" style="flex:1; padding: 8px; border-radius: var(--r-4); text-align: center;">1 · Tipo</div>
+        <div data-step="2" class="step-chip" style="flex:1; padding: 8px; border-radius: var(--r-4); text-align: center;">2 · Detalles</div>
+        <div data-step="3" class="step-chip" style="flex:1; padding: 8px; border-radius: var(--r-4); text-align: center;">3 · Documentos</div>
+        <div data-step="4" class="step-chip" style="flex:1; padding: 8px; border-radius: var(--r-4); text-align: center;">4 · Confirmar</div>
+      </div>
+
+      {# === Paso 1: tipo === #}
+      <fieldset data-pane="1">
+        <p class="b-14 text-muted mb-3">Selecciona el tipo de trámite que necesitas.</p>
+        <div class="stack" id="tipo-cards">
+          {% for t in tipos %}
+            <label class="card" style="cursor: pointer; display: block;">
+              <div class="flex items-start gap-3">
+                <input type="radio" name="tipo" value="{{ t.id }}"
+                       data-nombre="{{ t.nombre }}"
+                       data-docs='{{ t.requiere_documentos|tojson if t.requiere_documentos else "[]" }}'
+                       data-costo="{{ t.costo }}"
+                       data-dias="{{ t.tiempo_estimado_dias }}"
+                       {% if loop.first %}checked{% endif %}
+                       style="margin-top: 4px;" />
+                <div style="flex: 1;">
+                  <div class="b-14" style="font-weight: 700;">{{ t.nombre }}</div>
+                  <div class="b-12 text-muted">{{ t.descripcion or '' }}</div>
+                  <div class="flex gap-3 mt-2 b-12 text-soft">
+                    <span>📅 ~{{ t.tiempo_estimado_dias }} días</span>
+                    <span>💵 {% if t.costo and t.costo > 0 %}${{ t.costo }}{% else %}sin costo{% endif %}</span>
+                  </div>
+                </div>
+              </div>
+            </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      {# === Paso 2: detalles === #}
+      <fieldset data-pane="2" class="hidden">
+        <div class="field">
+          <label class="field__label">Motivo / descripción</label>
+          <textarea class="textarea" id="tramite-desc"
+                    placeholder="Cuéntanos para qué necesitas el trámite…"
+                    style="min-height: 140px;"></textarea>
+          <div class="field__hint">Esta información llega directo al equipo administrativo.</div>
+        </div>
+      </fieldset>
+
+      {# === Paso 3: documentos === #}
+      <fieldset data-pane="3" class="hidden">
+        <div id="docs-required-list" class="mb-4"></div>
+        <div class="field">
+          <label class="field__label">Documentos adjuntos (opcional)</label>
+          <input type="file" class="input" id="tramite-files" multiple
+                 style="padding: 8px; height: auto;" />
+          <div class="field__hint">Puedes adjuntar varios. Límite 5 MB por archivo.</div>
+        </div>
+      </fieldset>
+
+      {# === Paso 4: confirmación === #}
+      <fieldset data-pane="4" class="hidden">
+        <div class="card mb-4">
+          <h3 class="d-20 mb-3">Resumen</h3>
+          <div id="resumen"></div>
+        </div>
+        <label class="checkbox mb-4">
+          <input type="checkbox" id="acepta-terms" />
+          <span>Confirmo que la información proporcionada es correcta y autorizo
+                el procesamiento del trámite.</span>
+        </label>
+      </fieldset>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--soft" id="btn-prev" disabled>Anterior</button>
+      <button class="btn btn--primary" id="btn-next">Siguiente</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.step-chip { background: var(--surface-150); color: var(--ink-500); transition: all var(--t-fast); }
+.step-chip.step-active { background: var(--navy-100); color: var(--navy-800); }
+.step-chip.step-done   { background: var(--success-50); color: var(--success-700); }
+</style>
+
+<script>
+let step = 1;
+const STEPS = 4;
+
+function setStep(n) {
+  step = Math.max(1, Math.min(STEPS, n));
+  document.getElementById('step-label').textContent = `Paso ${step} de ${STEPS}`;
+  document.querySelectorAll('[data-pane]').forEach(p =>
+    p.classList.toggle('hidden', parseInt(p.dataset.pane) !== step));
+  document.querySelectorAll('[data-step]').forEach(c => {
+    const n = parseInt(c.dataset.step);
+    c.classList.toggle('step-active', n === step);
+    c.classList.toggle('step-done', n < step);
+  });
+  document.getElementById('btn-prev').disabled = step === 1;
+  document.getElementById('btn-next').textContent =
+    step === STEPS ? 'Solicitar' : 'Siguiente';
+
+  if (step === 3) renderDocsRequired();
+  if (step === 4) renderResumen();
+}
+
+function getSelectedTipo() {
+  const r = document.querySelector('input[name="tipo"]:checked');
+  if (!r) return null;
+  let docs = [];
+  try { docs = JSON.parse(r.dataset.docs || '[]'); } catch (_) {}
+  return {
+    id: parseInt(r.value),
+    nombre: r.dataset.nombre,
+    docs,
+    costo: parseFloat(r.dataset.costo || 0),
+    dias: parseInt(r.dataset.dias || 0),
+  };
+}
+
+function renderDocsRequired() {
+  const t = getSelectedTipo();
+  const wrap = document.getElementById('docs-required-list');
+  if (!t || !t.docs.length) {
+    wrap.innerHTML = '<div class="alert alert--info"><div class="alert__body">Este trámite no requiere documentos obligatorios.</div></div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="alert alert--warning"><div class="alert__body">
+      <div class="alert__title">Documentos requeridos:</div>
+      <ul style="margin: 8px 0 0; padding-left: 20px;">
+        ${t.docs.map(d => `<li>${d}</li>`).join('')}
+      </ul>
+    </div></div>`;
+}
+
+function renderResumen() {
+  const t = getSelectedTipo();
+  const desc = document.getElementById('tramite-desc').value || '—';
+  const files = document.getElementById('tramite-files').files;
+  document.getElementById('resumen').innerHTML = `
+    <div class="b-14 mb-2"><strong>Tipo:</strong> ${t?.nombre || '—'}</div>
+    <div class="b-14 mb-2"><strong>Tiempo estimado:</strong> ${t?.dias || 0} días hábiles</div>
+    <div class="b-14 mb-2"><strong>Costo:</strong> ${t?.costo > 0 ? '$' + t.costo : 'Sin costo'}</div>
+    <div class="b-14 mb-2"><strong>Motivo:</strong> ${desc}</div>
+    <div class="b-14"><strong>Documentos:</strong> ${files.length} adjunto${files.length === 1 ? '' : 's'}</div>
+  `;
+}
+
+document.getElementById('btn-next').addEventListener('click', async () => {
+  if (step < STEPS) {
+    if (step === 1 && !getSelectedTipo()) return toast('Selecciona un tipo', 'warning');
+    setStep(step + 1);
+    return;
+  }
+  if (!document.getElementById('acepta-terms').checked) {
+    return toast('Debes confirmar la información', 'warning');
+  }
+  const t = getSelectedTipo();
+  try {
+    const r = await api('/api/v1/tramites', {
+      method: 'POST',
+      body: JSON.stringify({
+        tipo_tramite_id: t.id,
+        descripcion: document.getElementById('tramite-desc').value,
+        documentos: [],  // upload real podría venir aquí
+      }),
+    });
+    toast('Trámite enviado', 'success', `Folio ${r.tramite.folio}`);
+    setTimeout(() => location.reload(), 1000);
+  } catch (e) {
+    toast('No se pudo crear', 'danger', e.body?.error || '');
+  }
+});
+
+document.getElementById('btn-prev').addEventListener('click', () => setStep(step - 1));
+document.getElementById('dlg-tramite').addEventListener('transitionend', () => {
+  if (!document.getElementById('dlg-tramite').classList.contains('open')) {
+    setStep(1);
+  }
+});
+setStep(1);
+</script>
+{% endblock %}

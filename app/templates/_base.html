@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="{% block meta_desc %}Plataforma escolar de la red Universidad de Guadalajara — horarios, salones, trámites y comunidad.{% endblock %}" />
+  <title>{% block title %}Matute Guide{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+  <div class="wrap">
+    {% block navbar %}{% include '_navbar.html' %}{% endblock %}
+
+    <main class="main" id="contenido" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% block footer %}{% include '_footer.html' %}{% endblock %}
+  </div>
+
+  <div class="toast-container" id="toast-container"
+       role="status" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

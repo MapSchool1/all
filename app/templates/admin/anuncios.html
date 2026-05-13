@@ -1,0 +1,176 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Anuncios · Panel{% endblock %}
+
+{% block admin_content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="d-32" style="margin:0;">Anuncios</h1>
+  <button class="btn btn--primary" onclick="abrir()">+ Nuevo anuncio</button>
+</div>
+<div id="anuncios-host"><p class="text-muted">Cargando…</p></div>
+
+<div class="dialog-backdrop" id="dlg-anuncio">
+  <div class="dialog dialog--lg">
+    <div class="dialog__header">
+      <span class="dialog__title" id="dlg-title">Nuevo anuncio</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog__body">
+      <input type="hidden" id="a-id" />
+      <div class="field">
+        <label class="field__label">Título</label>
+        <input class="input" id="a-titulo" />
+      </div>
+      <div class="field">
+        <label class="field__label">Cuerpo</label>
+        <textarea class="textarea" id="a-cuerpo" style="min-height: 120px;"></textarea>
+      </div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Audiencia</label>
+          <select class="select" id="a-aud">
+            <option value="todos">Todos</option>
+            <option value="estudiantes">Estudiantes</option>
+            <option value="profesores">Profesores</option>
+            <option value="admin">Administración</option>
+          </select>
+        </div>
+        <div class="field"><label class="field__label">Expira (opcional)</label>
+          <input class="input" id="a-expira" type="datetime-local" />
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label class="field__label">Fijar al inicio</label>
+          <label class="switch"><input type="checkbox" id="a-fijar" /><span class="switch__slider"></span></label>
+        </div>
+        <div class="field">
+          <label class="field__label">Publicar</label>
+          <label class="switch"><input type="checkbox" id="a-pub" checked /><span class="switch__slider"></span></label>
+        </div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="a-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="dlg-borrar">
+  <div class="dialog dialog--danger">
+    <div class="dialog__header">
+      <span class="dialog__title">Borrar anuncio</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog__body">
+      <div class="dialog__danger-zone"><strong>Zona peligrosa.</strong> Esta acción no se puede deshacer.</div>
+      <p class="b-14">¿Confirmas que quieres borrar el anuncio <strong id="borrar-titulo">—</strong>?</p>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--danger" id="confirm-borrar">Borrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let editingId = null;
+let deletingId = null;
+
+async function loadAnuncios() {
+  try {
+    const r = await api('/api/v1/anuncios');
+    if (!r.data.length) {
+      document.getElementById('anuncios-host').innerHTML = '<div class="empty"><div class="empty__icon">📢</div><div class="empty__title">Sin anuncios</div></div>';
+      return;
+    }
+    document.getElementById('anuncios-host').innerHTML = r.data.map(a => `
+      <div class="card mb-3">
+        <div class="flex items-center justify-between mb-2" style="flex-wrap: wrap; gap: 8px;">
+          <strong>${escapeHtml(a.titulo)}</strong>
+          <div class="flex gap-2 items-center">
+            ${a.fijado ? '<span class="badge badge--info">Fijado</span>' : ''}
+            <span class="badge badge--neutral">${a.audiencia}</span>
+            <button class="btn btn--ghost btn--sm" onclick='editar(${JSON.stringify(a).replace(/'/g, "\\'")})'>Editar</button>
+            <button class="btn btn--ghost btn--sm" style="color: var(--danger)"
+                    onclick='confirmDelete(${a.id}, ${JSON.stringify(a.titulo).replace(/'/g, "\\'")})'>Borrar</button>
+          </div>
+        </div>
+        <p class="b-14 text-muted">${escapeHtml(a.cuerpo || '')}</p>
+        <div class="b-12 text-soft mt-2">por ${escapeHtml(a.autor || '—')} · ${a.publicado_at ? new Date(a.publicado_at).toLocaleString('es-MX') : 'borrador'}</div>
+      </div>`).join('');
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function abrir() {
+  editingId = null;
+  document.getElementById('dlg-title').textContent = 'Nuevo anuncio';
+  document.getElementById('a-id').value = '';
+  document.getElementById('a-titulo').value = '';
+  document.getElementById('a-cuerpo').value = '';
+  document.getElementById('a-aud').value = 'todos';
+  document.getElementById('a-expira').value = '';
+  document.getElementById('a-fijar').checked = false;
+  document.getElementById('a-pub').checked = true;
+  document.getElementById('dlg-anuncio').classList.add('open');
+}
+
+function editar(a) {
+  editingId = a.id;
+  document.getElementById('dlg-title').textContent = 'Editar anuncio';
+  document.getElementById('a-id').value = a.id;
+  document.getElementById('a-titulo').value = a.titulo;
+  document.getElementById('a-cuerpo').value = a.cuerpo || '';
+  document.getElementById('a-aud').value = a.audiencia;
+  document.getElementById('a-expira').value = a.expira_at ? a.expira_at.slice(0, 16) : '';
+  document.getElementById('a-fijar').checked = a.fijado;
+  document.getElementById('a-pub').checked = a.publicado;
+  document.getElementById('dlg-anuncio').classList.add('open');
+}
+
+function confirmDelete(id, titulo) {
+  deletingId = id;
+  document.getElementById('borrar-titulo').textContent = titulo;
+  document.getElementById('dlg-borrar').classList.add('open');
+}
+
+document.getElementById('confirm-borrar').addEventListener('click', async () => {
+  if (!deletingId) return;
+  try {
+    await api(`/api/v1/anuncios/${deletingId}`, { method: 'DELETE' });
+    toast('Anuncio borrado', 'success');
+    document.getElementById('dlg-borrar').classList.remove('open');
+    loadAnuncios();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+document.getElementById('a-save').addEventListener('click', async () => {
+  const body = {
+    titulo: document.getElementById('a-titulo').value.trim(),
+    cuerpo: document.getElementById('a-cuerpo').value,
+    audiencia: document.getElementById('a-aud').value,
+    fijado: document.getElementById('a-fijar').checked,
+    publicado: document.getElementById('a-pub').checked,
+  };
+  const exp = document.getElementById('a-expira').value;
+  if (exp) body.expira_at = exp;
+  if (!body.titulo) return toast('Falta título', 'warning');
+  try {
+    if (editingId) {
+      await api(`/api/v1/anuncios/${editingId}`, { method: 'PUT', body: JSON.stringify(body) });
+      toast('Anuncio actualizado', 'success');
+    } else {
+      await api('/api/v1/anuncios', { method: 'POST', body: JSON.stringify(body) });
+      toast('Anuncio creado', 'success');
+    }
+    document.getElementById('dlg-anuncio').classList.remove('open');
+    loadAnuncios();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+loadAnuncios();
+</script>
+{% endblock %}

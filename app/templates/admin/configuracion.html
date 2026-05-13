@@ -1,0 +1,48 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Configuración · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Configuración del sistema</h1>
+
+<div class="grid grid-2 mb-6">
+  <div class="card">
+    <h2 class="d-20 mb-3">Información del plantel</h2>
+    {% for p in planteles %}
+      <div class="b-14 mb-2"><strong>{{ p.nombre }}</strong> ({{ p.clave }})</div>
+      <div class="b-12 text-muted">{{ p.ciudad }}</div>
+      <div class="b-12 text-muted">{{ p.direccion }}</div>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <h2 class="d-20 mb-3">Periodo activo</h2>
+    <div id="periodo-activo"><p class="text-muted">Cargando…</p></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="d-20 mb-3">Tipos de trámite</h2>
+  <div id="tipos-host"><p class="text-muted">Cargando…</p></div>
+</div>
+
+<script>
+(async () => {
+  try {
+    const r = await fetch('/api/v1/periodos/activo').then(r => r.json());
+    const p = r.periodo;
+    document.getElementById('periodo-activo').innerHTML = p ? `
+      <div class="b-14"><strong>${p.clave}</strong> · ${p.nombre || ''}</div>
+      <div class="b-12 text-muted">${p.fecha_inicio} → ${p.fecha_fin}</div>
+    ` : '<p class="text-muted">Sin periodo activo.</p>';
+  } catch (_) {}
+
+  try {
+    const t = await fetch('/api/v1/tramites/tipos').then(r => r.json());
+    document.getElementById('tipos-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Costo</th><th>Tiempo</th><th>Activo</th></tr></thead>
+        <tbody>${t.data.map(x => `<tr><td>${x.nombre}</td><td>$${x.costo}</td><td>${x.tiempo_estimado_dias} días</td><td>${x.activo ? '✓' : '✗'}</td></tr>`).join('')}</tbody>
+      </table>`;
+  } catch (_) {}
+})();
+</script>
+{% endblock %}

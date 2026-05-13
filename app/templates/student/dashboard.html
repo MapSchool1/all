@@ -1,0 +1,190 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import alert, schedule_grid, empty_state, badge, status_badge, stat_card %}
+{% block title %}Inicio · {{ user.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <div class="flex items-center gap-4 mb-6">
+    <h1 class="d-32" style="margin:0;">¡Hola, {{ user.nombre }}!</h1>
+    <span class="text-soft b-14">{{ user.expediente }}{% if user.carrera_id %} · {% endif %}</span>
+  </div>
+
+  {% set tabs = ['resumen', 'horario', 'calificaciones', 'asistencia', 'tramites'] %}
+  <div class="tabs" id="dashboard-tabs">
+    <button class="tabs__item active" data-tab="resumen">Resumen</button>
+    <button class="tabs__item" data-tab="horario">Horario {% if horario %}{{ horario.bloques|length }}{% endif %}</button>
+    <button class="tabs__item" data-tab="calificaciones">Calificaciones</button>
+    <button class="tabs__item" data-tab="asistencia">Asistencia</button>
+    <button class="tabs__item" data-tab="tramites">Trámites {{ tramites|length }}</button>
+  </div>
+
+  {# ================ RESUMEN ================ #}
+  <div data-pane="resumen">
+    <div class="grid grid-4 mb-6">
+      {{ stat_card('Materias', inscripciones|length, periodo=periodo.clave if periodo else '—') }}
+      {{ stat_card('Horas semanales', horario.total_horas if horario else 0) }}
+      {{ stat_card('Créditos', horario.total_creditos if horario else 0) }}
+      {{ stat_card('Conflictos', horario.bloques|selectattr('conflicto')|list|length if horario else 0) }}
+    </div>
+
+    {% if horario and horario.tiene_conflictos %}
+      {{ alert('Tu horario tiene un conflicto sin resolver. <a href="' ~ url_for('web_student.horario_constructor') ~ '">Revísalo aquí</a>.',
+               variant='warning', title='Conflicto en tu agenda') }}
+    {% endif %}
+
+    {% set hoy_idx = today.weekday() %}
+    {% set dias_keys = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab'] %}
+    {% if hoy_idx < 6 %}
+      <h2 class="d-24 mt-8 mb-4">Hoy ({{ ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][hoy_idx] }})</h2>
+      {% set hoy_dia = dias_keys[hoy_idx] %}
+      {% set hoy_bloques = bloques|selectattr('dia', 'equalto', hoy_dia)|list %}
+      {% if hoy_bloques %}
+        <div class="stack">
+          {% for b in hoy_bloques %}
+            <div class="card flex items-center gap-4">
+              <span class="mono-12 text-muted" style="min-width: 80px;">{{ b.hora_inicio.strftime('%H:%M') }}–{{ b.hora_fin.strftime('%H:%M') }}</span>
+              <div class="flex-1">
+                <strong>{{ b.materia.nombre if b.materia else '—' }}</strong>
+                <div class="text-muted b-12">{{ b.salon.codigo if b.salon else '—' }}{% if b.profesor %} · {{ b.profesor.nombre_completo }}{% endif %}</div>
+              </div>
+              {% if b.conflicto %}{{ badge('Conflicto', 'warning') }}{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted b-14">Sin clases programadas para hoy.</p>
+      {% endif %}
+    {% endif %}
+
+    {% if anuncios %}
+      <h2 class="d-24 mt-8 mb-4">Anuncios</h2>
+      <div class="stack">
+        {% for a in anuncios %}
+          <div class="card card--info">
+            <div class="card__title">{{ a.titulo }}</div>
+            {% if a.cuerpo %}<div class="card__sub">{{ a.cuerpo }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  {# ================ HORARIO ================ #}
+  <div data-pane="horario" class="hidden">
+    {% if horario and bloques %}
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="d-24" style="margin:0;">{{ horario.nombre }}</h2>
+        {{ status_badge(horario.estado) }}
+      </div>
+      {{ schedule_grid(bloques) }}
+    {% else %}
+      {{ empty_state('Tu horario aún está vacío',
+          'Construye tu horario seleccionando materias y salones.',
+          icon='📅', cta='Crear mi horario',
+          cta_href=url_for('web_student.horario_constructor')) }}
+    {% endif %}
+  </div>
+
+  {# ================ CALIFICACIONES ================ #}
+  <div data-pane="calificaciones" class="hidden">
+    {% if inscripciones %}
+      <table class="data-table">
+        <thead><tr>
+          <th>Materia</th><th>P1</th><th>P2</th><th>P3</th><th>Ord.</th><th>Final</th>
+        </tr></thead>
+        <tbody>
+          {% for ins in inscripciones %}
+            {% set cs = ins.calificaciones|selectattr('publicado')|list %}
+            {% set by_tipo = {} %}{% for c in cs %}{% set _ = by_tipo.update({c.tipo: c}) %}{% endfor %}
+            <tr>
+              <td><strong>{{ ins.materia.nombre if ins.materia else '—' }}</strong>
+                <div class="b-12 text-muted">{{ ins.materia.clave if ins.materia else '' }}</div>
+              </td>
+              {% for tipo in ['parcial_1', 'parcial_2', 'parcial_3', 'ordinario', 'final'] %}
+                <td>{% if by_tipo.get(tipo) %}<strong>{{ '%.1f'|format(by_tipo[tipo].valor) }}</strong>{% else %}<span class="text-soft">—</span>{% endif %}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      {{ empty_state('Sin inscripciones', 'Cuando te inscribas aparecerán aquí tus materias y calificaciones.', icon='📊') }}
+    {% endif %}
+  </div>
+
+  {# ================ ASISTENCIA ================ #}
+  <div data-pane="asistencia" class="hidden">
+    {% if inscripciones %}
+      <div class="stack">
+        {% for ins in inscripciones %}
+          <div class="card">
+            <div class="flex items-center justify-between mb-2">
+              <strong>{{ ins.materia.nombre if ins.materia else '—' }}</strong>
+              <span class="b-14 text-muted">Total {{ ins.asistencias|length }} sesiones</span>
+            </div>
+            {% set total = ins.asistencias|length %}
+            {% set pres = ins.asistencias|selectattr('estado', 'equalto', 'presente')|list|length %}
+            {% set just = ins.asistencias|selectattr('estado', 'equalto', 'justificado')|list|length %}
+            {% set pct = ((pres + just) / total * 100)|round(1) if total else 0 %}
+            <div style="background: var(--surface-150); height: 8px; border-radius: var(--r-pill); overflow: hidden;">
+              <div style="background: {% if pct < 80 %}var(--warning){% else %}var(--success){% endif %}; width: {{ pct }}%; height: 100%;"></div>
+            </div>
+            <div class="flex items-center justify-between mt-2 b-12 text-muted">
+              <span>{{ pres }} presentes · {{ just }} justificadas · {{ total - pres - just }} ausencias</span>
+              <strong style="color: var(--ink-900);">{{ pct }}%</strong>
+            </div>
+            {% if pct < 80 and total %}
+              {{ alert('Tu asistencia está por debajo del 80%. Recupera lo antes posible.',
+                       variant='warning') }}
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ empty_state('Sin registros de asistencia', icon='✓') }}
+    {% endif %}
+  </div>
+
+  {# ================ TRÁMITES ================ #}
+  <div data-pane="tramites" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="d-24" style="margin:0;">Mis trámites</h2>
+      <a class="btn btn--primary" href="{{ url_for('web_student.tramites') }}">+ Nuevo trámite</a>
+    </div>
+    {% if tramites %}
+      <table class="data-table">
+        <thead><tr><th>Folio</th><th>Tipo</th><th>Estado</th><th>Fecha</th></tr></thead>
+        <tbody>
+          {% for t in tramites %}
+            <tr>
+              <td><strong>{{ t.folio }}</strong></td>
+              <td>{{ t.tipo_tramite.nombre if t.tipo_tramite else '—' }}</td>
+              <td>{{ status_badge(t.estado) }}</td>
+              <td>{{ t.created_at.strftime('%d %b %Y') }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      {{ empty_state('Sin trámites', 'Solicita tu primer trámite cuando lo necesites.', icon='📋',
+          cta='Crear trámite', cta_href=url_for('web_student.tramites')) }}
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('#dashboard-tabs .tabs__item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#dashboard-tabs .tabs__item').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== b.dataset.tab));
+  });
+});
+
+// Permitir tab=calificaciones via querystring
+const urlTab = new URLSearchParams(window.location.search).get('tab');
+if (urlTab) {
+  document.querySelector(`#dashboard-tabs .tabs__item[data-tab="${urlTab}"]`)?.click();
+}
+</script>
+{% endblock %}

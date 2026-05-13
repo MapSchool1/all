@@ -1,0 +1,39 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import empty_state %}
+{% block title %}Profesor · {{ user.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <h1 class="d-32 mb-2">Hola, profesor {{ user.apellido_p }}</h1>
+  <p class="b-16 text-muted mb-6">Vista rápida de tus clases y grupos.</p>
+
+  <div class="grid grid-3 mb-6">
+    <div class="stat-card">
+      <div class="stat-card__label">Bloques activos</div>
+      <div class="stat-card__value">{{ bloques|length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">Grupos</div>
+      <div class="stat-card__value">{{ grupos|length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">Estudiantes únicos</div>
+      <div class="stat-card__value">{{ grupos|map(attribute='estudiante_id')|unique|list|length }}</div>
+    </div>
+  </div>
+
+  <h2 class="d-24 mb-4">Mis grupos</h2>
+  {% if grupos %}
+    <div class="grid grid-3">
+      {% for g in grupos %}
+        <a class="content-card" href="{{ url_for('web_profesor.grupo', inscripcion_id=g.id) }}">
+          <div class="content-card__title">{{ g.materia.nombre if g.materia else '—' }}</div>
+          <div class="content-card__desc">Grupo {{ g.grupo or 'A' }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    {{ empty_state('Sin grupos asignados', 'Cuando se te asignen materias aparecerán aquí.', icon='🎓') }}
+  {% endif %}
+</div>
+{% endblock %}

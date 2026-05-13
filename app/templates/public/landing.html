@@ -1,0 +1,72 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import button, content_card %}
+{% block title %}Matute Guide · Universidad de Guadalajara{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <h1 class="hero__title">Guía tu camino<br>en el campus.</h1>
+    <p class="hero__sub">
+      Plataforma única para horarios inteligentes, navegación del campus,
+      trámites en línea y comunidad académica de la red Universidad de Guadalajara.
+    </p>
+    <div class="hero__actions">
+      {{ button('Explorar oferta académica', variant='primary', size='lg', href=url_for('web_public.oferta')) }}
+      {{ button('Ver el mapa del campus', variant='ghost', size='lg', href=url_for('web_public.mapa')) }}
+    </div>
+  </div>
+</section>
+
+<section class="container">
+  <div class="feature-grid">
+    <article class="feature">
+      <div class="feature__icon">📅</div>
+      <h3 class="feature__title">Horarios inteligentes</h3>
+      <p class="b-14 text-muted">Construye tu horario, detecta conflictos al instante y publícalo cuando esté listo.</p>
+    </article>
+    <article class="feature">
+      <div class="feature__icon">🗺️</div>
+      <h3 class="feature__title">Mapa del campus</h3>
+      <p class="b-14 text-muted">Encuentra cualquier salón, edificio o servicio sin perderte entre clases.</p>
+    </article>
+    <article class="feature">
+      <div class="feature__icon">📋</div>
+      <h3 class="feature__title">Trámites en línea</h3>
+      <p class="b-14 text-muted">Solicita constancias y kárdex sin filas. Da seguimiento en tiempo real.</p>
+    </article>
+  </div>
+
+  <div class="stats-strip">
+    <div>
+      <div class="stats-strip__num">{{ '{:,}'.format(stats.estudiantes) }}</div>
+      <div class="stats-strip__lbl">estudiantes activos</div>
+    </div>
+    <div>
+      <div class="stats-strip__num">{{ stats.horarios }}</div>
+      <div class="stats-strip__lbl">horarios publicados</div>
+    </div>
+    <div>
+      <div class="stats-strip__num">{{ stats.salones }}</div>
+      <div class="stats-strip__lbl">salones disponibles</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="d-32 mb-3">Oferta académica</h2>
+    <p class="b-16 text-muted mb-6">Programas tecnológicos profesionales con enfoque práctico.</p>
+    {% if carreras %}
+      <div class="grid grid-3">
+        {% for c in carreras %}
+          {{ content_card(c.nombre, desc=(c.descripcion or '')[:160] + '…',
+              meta=[c.duracion_semestres ~ ' semestres', (c.campos or '').split(',')[0]],
+              cta='Ver plan de estudios',
+              href=url_for('web_public.carrera_detalle', slug=c.slug)) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      {% from 'components/_macros.html' import empty_state %}
+      {{ empty_state('Sin oferta activa', 'Pronto publicaremos los programas disponibles.', icon='🎓') }}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

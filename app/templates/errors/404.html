@@ -1,0 +1,10 @@
+{% extends '_base.html' %}
+{% block title %}Página no encontrada · Matute Guide{% endblock %}
+{% block content %}
+<div class="container section text-center">
+  <div class="d-72" style="color: var(--ink-300);">404</div>
+  <h1 class="d-32 mt-3">No encontramos esa página</h1>
+  <p class="b-16 text-muted mt-2">Revisa el enlace o vuelve al inicio.</p>
+  <a class="btn btn--primary mt-6" href="{{ url_for('web_public.landing') }}">Volver al inicio</a>
+</div>
+{% endblock %}

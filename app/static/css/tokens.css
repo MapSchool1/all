@@ -1,0 +1,119 @@
+/* ============================================================
+   MapSchool Design System v1.0.0 — Design Tokens
+   navy #172846 primary · Lexend display · DM Sans body · DM Mono mono
+   4px grid · WCAG AA
+   ============================================================ */
+
+:root {
+  /* === Color · Navy primary === */
+  --navy-950: #0B1423;
+  --navy-900: #031633;
+  --navy-800: #172846;        /* primary */
+  --navy-700: #233C5B;
+  --navy-600: #304B7A;
+  --navy-500: #3C61A5;
+  --navy-400: #6DB4D2;
+  --navy-300: #9FCDE3;
+  --navy-200: #CFE2FF;
+  --navy-100: #E8F1FF;
+
+  /* === Surface · grayscale === */
+  --surface-0: #FFFFFF;
+  --surface-50: #FCFCFD;
+  --surface-100: #F8F9FA;
+  --surface-150: #F1F3F5;
+  --surface-200: #E9ECEF;
+
+  /* === Ink · text === */
+  --ink-900: #212529;
+  --ink-800: #343A40;
+  --ink-700: #495057;
+  --ink-600: #6C757D;
+  --ink-500: #9899A8;
+  --ink-400: #ADB5BD;
+  --ink-300: #CED4DA;
+
+  /* === Lines / borders === */
+  --line-200: #E9ECEF;
+  --line-300: #DEE2E6;
+  --line-400: #CED4DA;
+
+  /* === Semantic === */
+  --success:    #28A745;
+  --success-50: #E6F4EA;
+  --success-700:#1E7E34;
+
+  --danger:     #DC3545;
+  --danger-50:  #FBE9EB;
+  --danger-700: #A71D2A;
+
+  --warning:    #F2B705;
+  --warning-50: #FEF7E0;
+  --warning-700:#A47C04;
+
+  --info:       #0D6EFD;
+  --info-50:    #E7F0FF;
+  --info-700:   #0846B0;
+
+  /* === Schedule blocks === */
+  --bloque-tronco-comun:     var(--navy-800);
+  --bloque-area-profesional: var(--navy-500);
+  --bloque-laboratorio:      var(--success);
+  --bloque-idiomas:          var(--navy-400);
+  --bloque-conflicto:        var(--warning);
+
+  /* === Typography === */
+  --font-display: 'Lexend', system-ui, -apple-system, sans-serif;
+  --font-body:    'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:    'DM Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* === Spacing (4px grid) === */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+
+  /* === Radius === */
+  --r-2:  2px;
+  --r-4:  4px;
+  --r-6:  6px;
+  --r-8:  8px;
+  --r-12: 12px;
+  --r-16: 16px;
+  --r-pill: 999px;
+
+  /* === Shadow === */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-3: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --shadow-4: 0 16px 48px rgba(15, 23, 42, 0.16);
+
+  /* === Motion === */
+  --t-fast: 150ms ease;
+  --t-base: 250ms ease;
+  --t-slow: 400ms ease;
+
+  /* === Layout === */
+  --navbar-h:    72px;
+  --sidebar-w:   240px;
+  --container:   1200px;
+
+  /* === Focus ring (WCAG) === */
+  --focus-ring: 0 0 0 3px rgba(23, 40, 70, 0.32);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-base: 0ms;
+    --t-slow: 0ms;
+  }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

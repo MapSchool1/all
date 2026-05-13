@@ -1,0 +1,109 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import salon_card, empty_state %}
+{% block title %}Salones · Matute Guide{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <h1 class="d-32 mb-2">Salones</h1>
+  <p class="b-16 text-muted mb-6">Explora la disponibilidad en tiempo real de los {{ salones|length }} salones del campus.</p>
+
+  <div class="flex gap-3 mb-6" style="flex-wrap: wrap; align-items: center;">
+    <input class="input" id="salon-search" placeholder="Buscar por código o nombre…" style="max-width: 320px;" />
+    <select class="select" id="salon-tipo" style="max-width: 200px;">
+      <option value="">Todos los tipos</option>
+      <option value="aula">Aula</option>
+      <option value="laboratorio">Laboratorio</option>
+      <option value="auditorio">Auditorio</option>
+      <option value="sala_computo">Sala de cómputo</option>
+      <option value="sala_idiomas">Sala de idiomas</option>
+    </select>
+    <label class="switch">
+      <input type="checkbox" id="solo-libres" />
+      <span class="switch__slider"></span>
+    </label>
+    <span class="b-14">Solo libres ahora</span>
+  </div>
+
+  <div class="tabs" id="ed-tabs">
+    <button class="tabs__item active" data-edif="">Todos</button>
+    {% for e in edificios %}
+      <button class="tabs__item" data-edif="{{ e.id }}">Edif. {{ e.clave }}</button>
+    {% endfor %}
+  </div>
+
+  <div id="salones-grid" class="grid grid-4">
+    {% for s in salones %}
+      <a class="salon-card" href="{{ url_for('web_public.salon_detalle', codigo=s.codigo) }}"
+         data-edif="{{ s.edificio_id }}" data-tipo="{{ s.tipo }}"
+         data-search="{{ (s.codigo + ' ' + (s.nombre or ''))|lower }}">
+        <div class="salon-card__head">
+          <div>
+            <div class="salon-card__codigo">{{ s.codigo }}</div>
+            <div class="salon-card__nombre">{{ s.nombre or '' }}</div>
+          </div>
+          <span class="dot dot--success disp-dot" data-salon-id="{{ s.id }}"></span>
+        </div>
+        <div class="salon-card__meta">
+          <span class="badge badge--navy">{{ s.tipo|replace('_', ' ') }}</span>
+          <span>· {{ s.capacidad }} cupos</span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+
+  <div id="empty-state" class="hidden">
+    {{ empty_state('Sin resultados', 'Ajusta los filtros para encontrar salones.', icon='🔎') }}
+  </div>
+</div>
+
+<script>
+const cards = document.querySelectorAll('#salones-grid .salon-card');
+const search = document.getElementById('salon-search');
+const tipoSel = document.getElementById('salon-tipo');
+const soloLibres = document.getElementById('solo-libres');
+let activeEdif = '';
+
+document.querySelectorAll('#ed-tabs .tabs__item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#ed-tabs .tabs__item').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    activeEdif = b.dataset.edif;
+    applyFilters();
+  });
+});
+[search, tipoSel, soloLibres].forEach(el => el.addEventListener('input', applyFilters));
+
+function applyFilters() {
+  const q = search.value.trim().toLowerCase();
+  const tipo = tipoSel.value;
+  const libres = soloLibres.checked;
+  let visible = 0;
+  cards.forEach(c => {
+    const matchEdif = !activeEdif || c.dataset.edif === activeEdif;
+    const matchTipo = !tipo || c.dataset.tipo === tipo;
+    const matchSearch = !q || c.dataset.search.includes(q);
+    const matchLibre = !libres || c.querySelector('.disp-dot').classList.contains('dot--success');
+    const show = matchEdif && matchTipo && matchSearch && matchLibre;
+    c.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  document.getElementById('empty-state').classList.toggle('hidden', visible > 0);
+  document.getElementById('salones-grid').classList.toggle('hidden', visible === 0);
+}
+
+async function refreshDisponibilidad() {
+  try {
+    const r = await fetch('/api/v1/salones').then(r => r.json());
+    r.data.forEach(s => {
+      const dot = document.querySelector(`.disp-dot[data-salon-id="${s.id}"]`);
+      if (!dot) return;
+      dot.classList.remove('dot--success', 'dot--warning');
+      dot.classList.add(s.disponible_ahora ? 'dot--success' : 'dot--warning');
+      dot.title = s.disponible_ahora ? 'Libre ahora' : 'Ocupado ahora';
+    });
+  } catch (_) {}
+}
+refreshDisponibilidad();
+setInterval(refreshDisponibilidad, 60000);
+</script>
+{% endblock %}

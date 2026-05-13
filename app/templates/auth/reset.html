@@ -1,0 +1,84 @@
+{% extends '_base.html' %}
+{% block title %}Restablecer contraseña · Matute Guide{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-split">
+  <aside class="auth-split__left">
+    <div>
+      <p class="auth-split__quote">"Una contraseña segura es como una buena puerta: te protege sin estorbar."</p>
+      <p class="auth-split__attr">— Equipo Matute Guide</p>
+    </div>
+  </aside>
+  <section class="auth-split__right">
+    <div class="auth-split__form">
+      <a class="navbar__brand" href="{{ url_for('web_public.landing') }}"
+         style="color: var(--navy-800); display:block; margin-bottom: var(--s-6);">Matute Guide</a>
+
+      {% if not valid %}
+        <h1 class="d-24 mb-4">Enlace inválido o expirado</h1>
+        <div class="alert alert--danger mb-4">
+          <div class="alert__body">
+            El enlace ya no es válido. Solicita uno nuevo.
+          </div>
+        </div>
+        <a class="btn btn--primary btn--block" href="{{ url_for('web_auth.forgot') }}">
+          Solicitar nuevo enlace
+        </a>
+      {% else %}
+        <h1 class="d-24 mb-4">Nueva contraseña</h1>
+
+        <div id="reset-msg" class="hidden mb-4"></div>
+
+        <form id="reset-form" novalidate>
+          <div class="field">
+            <label class="field__label" for="pwd">Contraseña nueva</label>
+            <input class="input" type="password" id="pwd" required data-validate="required min8" />
+            <div class="field__hint">Mínimo 8 caracteres con letras y números.</div>
+            <div class="field__error">Contraseña débil</div>
+          </div>
+          <div class="field">
+            <label class="field__label" for="pwd2">Confirmar contraseña</label>
+            <input class="input" type="password" id="pwd2" required data-validate="required" />
+            <div class="field__error">Las contraseñas no coinciden</div>
+          </div>
+          <button type="submit" class="btn btn--primary btn--lg btn--block">Restablecer</button>
+        </form>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<script>
+const TOKEN = "{{ token }}";
+
+document.getElementById('reset-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const p1 = document.getElementById('pwd');
+  const p2 = document.getElementById('pwd2');
+  if (!validateField(p1)) return;
+  if (p1.value !== p2.value) {
+    p2.closest('.field').classList.add('field--has-error');
+    return;
+  }
+  try {
+    const r = await fetch(`/auth/reset/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password_nuevo: p1.value }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw data;
+    document.getElementById('reset-msg').classList.remove('hidden');
+    document.getElementById('reset-msg').innerHTML =
+      `<div class="alert alert--success"><div class="alert__body">${data.message}</div></div>`;
+    setTimeout(() => location.href = '/auth/login', 1500);
+  } catch (e) {
+    document.getElementById('reset-msg').classList.remove('hidden');
+    document.getElementById('reset-msg').innerHTML =
+      `<div class="alert alert--danger"><div class="alert__body">${e.error || 'Error al restablecer'}</div></div>`;
+  }
+});
+</script>
+{% endblock %}

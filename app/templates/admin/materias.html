@@ -1,0 +1,49 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Materias · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Materias</h1>
+<div class="flex gap-3 mb-4">
+  <select class="select" id="filtro-carrera" style="max-width: 280px;">
+    <option value="">Todas las carreras</option>
+    {% for c in carreras %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+  </select>
+  <select class="select" id="filtro-sem" style="max-width: 120px;">
+    <option value="">Todos</option>
+    {% for s in range(1, 9) %}<option value="{{ s }}">Sem {{ s }}</option>{% endfor %}
+  </select>
+</div>
+<div id="materias-host"><p class="text-muted">Cargando…</p></div>
+
+<script>
+async function load() {
+  const params = new URLSearchParams();
+  const c = document.getElementById('filtro-carrera').value;
+  const s = document.getElementById('filtro-sem').value;
+  if (c) params.set('carrera_id', c);
+  if (s) params.set('semestre', s);
+  try {
+    const r = await api('/api/v1/materias?' + params);
+    if (!r.data.length) {
+      document.getElementById('materias-host').innerHTML = '<div class="empty"><div class="empty__title">Sin materias</div></div>';
+      return;
+    }
+    document.getElementById('materias-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Clave</th><th>Nombre</th><th>Carrera</th><th>Sem</th><th>Tipo</th><th>Créditos</th></tr></thead>
+        <tbody>${r.data.map(m => `
+          <tr>
+            <td class="mono-12">${m.clave}</td>
+            <td><strong>${m.nombre}</strong></td>
+            <td class="b-12 text-muted">${m.carrera_nombre || '—'}</td>
+            <td>${m.semestre}</td>
+            <td><span class="badge badge--navy">${m.tipo.replace('_',' ')}</span></td>
+            <td>${m.creditos}</td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+  } catch (_) { toast('Error', 'danger'); }
+}
+['filtro-carrera', 'filtro-sem'].forEach(id => document.getElementById(id).addEventListener('change', load));
+load();
+</script>
+{% endblock %}

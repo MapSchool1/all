@@ -1,0 +1,98 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Reportes · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-2">Reportes y analíticas</h1>
+
+<div class="card mb-6">
+  <h2 class="d-20 mb-3">Exportar a CSV</h2>
+  <p class="b-14 text-muted mb-3">Descarga datos en formato compatible con Excel y Google Sheets.</p>
+  <div class="flex gap-2" style="flex-wrap: wrap;">
+    <button class="btn btn--soft btn--sm" onclick="downloadCsv('usuarios.csv')">📥 Usuarios</button>
+    <button class="btn btn--soft btn--sm" onclick="downloadCsv('salones.csv')">📥 Salones</button>
+    <button class="btn btn--soft btn--sm" onclick="downloadCsv('asistencia.csv')">📥 Asistencia</button>
+    <button class="btn btn--soft btn--sm" onclick="downloadCsv('calificaciones.csv')">📥 Calificaciones</button>
+    <button class="btn btn--soft btn--sm" onclick="downloadCsv('tramites.csv')">📥 Trámites</button>
+  </div>
+</div>
+
+<script>
+async function downloadCsv(name) {
+  try {
+    const res = await fetch(`/api/v1/stats/export/${name}`, {
+      headers: TokenStore.access ? { 'Authorization': 'Bearer ' + TokenStore.access } : {},
+    });
+    if (!res.ok) {
+      toast('No autorizado', 'danger', `HTTP ${res.status}`);
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('Descarga iniciada', 'success', name);
+  } catch (e) {
+    toast('Error al descargar', 'danger', e.message);
+  }
+}
+</script>
+
+<div class="grid grid-2 mb-6">
+  <div class="card">
+    <h2 class="d-20 mb-3">Distribución de usuarios por rol</h2>
+    <div id="usuarios-host"></div>
+  </div>
+  <div class="card">
+    <h2 class="d-20 mb-3">Asistencia global</h2>
+    <div id="asistencia-host"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="d-20 mb-3">Carreras</h2>
+  <div id="carreras-host"></div>
+</div>
+
+<script>
+(async () => {
+  try {
+    const u = await api('/api/v1/stats/usuarios');
+    const wrap = document.getElementById('usuarios-host');
+    const items = Object.entries(u.por_rol);
+    const total = items.reduce((a,[,v])=>a+v, 0) || 1;
+    wrap.innerHTML = items.map(([k,v]) => `
+      <div class="mb-2">
+        <div class="flex items-center justify-between b-12 mb-1"><span>${k}</span><strong>${v}</strong></div>
+        <div style="background: var(--surface-150); height: 8px; border-radius: var(--r-pill);">
+          <div style="background: var(--navy-500); height: 100%; width: ${v/total*100}%; border-radius: var(--r-pill);"></div>
+        </div>
+      </div>`).join('');
+  } catch (_) {}
+
+  try {
+    const a = await api('/api/v1/stats/asistencia');
+    const wrap = document.getElementById('asistencia-host');
+    wrap.innerHTML = `
+      <div class="d-48 mb-3">${a.promedio}%</div>
+      <div class="b-14 text-muted">Promedio global</div>
+      <div class="mt-4 grid grid-4">
+        ${Object.entries(a.distribucion).map(([k,v]) => `<div><div class="b-12 text-soft">${k}</div><strong>${v}</strong></div>`).join('')}
+      </div>`;
+  } catch (_) {}
+
+  try {
+    const c = await api('/api/v1/stats/carreras');
+    const wrap = document.getElementById('carreras-host');
+    wrap.innerHTML = `<table class="data-table">
+      <thead><tr><th>Carrera</th><th>Estudiantes</th><th>Horarios pub.</th></tr></thead>
+      <tbody>${c.carreras.map(x => `<tr><td>${x.nombre}</td><td>${x.estudiantes}</td><td>${x.horarios_pub}</td></tr>`).join('')}</tbody>
+    </table>`;
+  } catch (_) {}
+})();
+</script>
+{% endblock %}

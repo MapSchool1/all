@@ -1,0 +1,26 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import content_card, empty_state %}
+{% block title %}Oferta académica · Matute Guide{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <h1 class="d-32 mb-2">Oferta académica</h1>
+  <p class="b-16 text-muted mb-8">{{ carreras|length }} programas tecnológicos profesionales activos en CUValles.</p>
+
+  {% if carreras %}
+    <div class="grid grid-3">
+      {% for c in carreras %}
+        {{ content_card(c.nombre,
+            desc=c.descripcion or 'Programa enfocado en formación práctica.',
+            meta=[c.duracion_semestres ~ ' semestres',
+                  c.creditos_totales ~ ' créditos',
+                  (c.campos or '').split(',')[0]],
+            cta='Ver plan de estudios',
+            href=url_for('web_public.carrera_detalle', slug=c.slug)) }}
+      {% endfor %}
+    </div>
+  {% else %}
+    {{ empty_state('Sin oferta activa', 'Pronto publicaremos los programas disponibles.', icon='🎓') }}
+  {% endif %}
+</div>
+{% endblock %}

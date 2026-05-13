@@ -1,0 +1,53 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import badge %}
+{% block title %}{{ carrera.nombre }} · Matute Guide{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('web_public.landing') }}">Inicio</a>
+    <span class="breadcrumbs__sep">/</span>
+    <a href="{{ url_for('web_public.oferta') }}">Oferta académica</a>
+    <span class="breadcrumbs__sep">/</span>
+    <span>{{ carrera.nombre_corto or carrera.nombre }}</span>
+  </nav>
+
+  <h1 class="d-32 mb-2">{{ carrera.nombre }}</h1>
+  <p class="b-16 text-muted mb-4">{{ carrera.descripcion }}</p>
+
+  <div class="flex gap-3 mb-8">
+    {{ badge(carrera.duracion_semestres ~ ' semestres', 'navy') }}
+    {{ badge(carrera.creditos_totales ~ ' créditos', 'navy') }}
+    {% if carrera.campos %}{{ badge(carrera.campos, 'neutral') }}{% endif %}
+  </div>
+
+  <h2 class="d-24 mb-4">Plan de estudios</h2>
+  {% if plan %}
+    <div class="stack-lg">
+      {% for sem, materias in plan.items() %}
+        <section>
+          <h3 class="d-20 mb-3">Semestre {{ sem }}</h3>
+          <div class="grid grid-3">
+            {% for m in materias %}
+              {% set tipo_class = {'tronco_comun':'tronco-comun', 'area_profesional':'area-profesional',
+                                   'laboratorio':'laboratorio', 'idiomas':'idiomas'} %}
+              <div class="card" style="border-left: 4px solid var(--bloque-{{ tipo_class.get(m.tipo, 'tronco-comun') }});">
+                <div class="b-12 text-soft mono-12">{{ m.clave }}</div>
+                <div class="d-20 mt-1">{{ m.nombre }}</div>
+                <div class="flex gap-2 mt-3">
+                  {{ badge(m.tipo|replace('_', ' '), 'navy') }}
+                  {{ badge(m.creditos ~ ' cred.', 'neutral') }}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% from 'components/_macros.html' import empty_state %}
+    {{ empty_state('Plan de estudios en revisión',
+        'Estamos actualizando el plan. Vuelve pronto.', icon='📚') }}
+  {% endif %}
+</div>
+{% endblock %}

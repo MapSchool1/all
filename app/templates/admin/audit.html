@@ -1,0 +1,31 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Audit log · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Audit log</h1>
+<p class="b-16 text-muted mb-6">Registro inmutable de acciones privilegiadas.</p>
+<div id="audit-host"><p class="text-muted">Cargando…</p></div>
+
+<script>
+(async () => {
+  try {
+    const r = await api('/api/v1/audit?per_page=50');
+    if (!r.data.length) {
+      document.getElementById('audit-host').innerHTML = '<div class="empty"><div class="empty__icon">📋</div><div class="empty__title">Sin actividad</div></div>'; return;
+    }
+    document.getElementById('audit-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>IP</th></tr></thead>
+        <tbody>${r.data.map(a => `
+          <tr>
+            <td class="mono-12">${new Date(a.created_at).toLocaleString('es-MX')}</td>
+            <td>${a.usuario || '—'}</td>
+            <td><strong>${a.accion}</strong></td>
+            <td>${a.entidad || '—'}${a.entidad_id ? ' #' + a.entidad_id : ''}</td>
+            <td class="mono-12 text-muted">${a.ip || '—'}</td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+  } catch (e) { toast('Error', 'danger'); }
+})();
+</script>
+{% endblock %}

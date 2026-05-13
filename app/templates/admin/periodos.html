@@ -1,0 +1,192 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Periodos · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Periodos académicos</h1>
+
+<div class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--s-6);">
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="d-20" style="margin:0;">Periodos</h2>
+      <button class="btn btn--soft btn--sm" data-dialog-open="dlg-periodo">+ Nuevo</button>
+    </div>
+    <div id="periodos-host"><p class="text-muted">Cargando…</p></div>
+  </section>
+
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="d-20" style="margin:0;">Calendario académico</h2>
+      <button class="btn btn--soft btn--sm" data-dialog-open="dlg-evento" id="btn-nuevo-evento" disabled>+ Evento</button>
+    </div>
+    <p class="b-14 text-muted mb-3" id="cal-context">Selecciona un periodo activo para ver su calendario.</p>
+    <div id="cal-host"></div>
+  </section>
+</div>
+
+{# Modal periodo #}
+<div class="dialog-backdrop" id="dlg-periodo">
+  <div class="dialog">
+    <div class="dialog__header"><span class="dialog__title">Nuevo periodo</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button></div>
+    <div class="dialog__body">
+      <div class="field"><label class="field__label">Clave (ej. 2026-A)</label><input class="input" id="p-clave" /></div>
+      <div class="field"><label class="field__label">Nombre</label><input class="input" id="p-nombre" /></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Inicio</label><input class="input" id="p-inicio" type="date" /></div>
+        <div class="field"><label class="field__label">Fin</label><input class="input" id="p-fin" type="date" /></div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="p-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+{# Modal evento de calendario #}
+<div class="dialog-backdrop" id="dlg-evento">
+  <div class="dialog">
+    <div class="dialog__header"><span class="dialog__title">Nuevo evento</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button></div>
+    <div class="dialog__body">
+      <div class="field"><label class="field__label">Título</label><input class="input" id="e-titulo" /></div>
+      <div class="field"><label class="field__label">Descripción</label><textarea class="textarea" id="e-desc"></textarea></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Tipo</label>
+          <select class="select" id="e-tipo">
+            <option value="evento">Evento</option>
+            <option value="examen">Examen</option>
+            <option value="vacaciones">Vacaciones</option>
+            <option value="feriado">Feriado</option>
+            <option value="entrega">Entrega</option>
+          </select>
+        </div>
+        <div class="field"><label class="field__label">Audiencia</label>
+          <select class="select" id="e-aud">
+            <option value="todos">Todos</option>
+            <option value="estudiantes">Estudiantes</option>
+            <option value="profesores">Profesores</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Inicio</label><input class="input" id="e-inicio" type="date" /></div>
+        <div class="field"><label class="field__label">Fin (opcional)</label><input class="input" id="e-fin" type="date" /></div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="e-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let periodoSeleccionado = null;
+
+async function loadPeriodos() {
+  try {
+    const r = await fetch('/api/v1/periodos').then(r => r.json());
+    if (!r.data.length) {
+      document.getElementById('periodos-host').innerHTML = '<div class="empty"><div class="empty__title">Sin periodos</div></div>';
+      return;
+    }
+    document.getElementById('periodos-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Clave</th><th>Inicio → Fin</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${r.data.map(p => `
+          <tr>
+            <td><strong>${p.clave}</strong></td>
+            <td class="b-12 text-muted mono-12">${p.fecha_inicio} → ${p.fecha_fin}</td>
+            <td>${p.activo ? '<span class="badge badge--success">Activo</span>' : '<span class="badge badge--neutral">Inactivo</span>'}</td>
+            <td>
+              <button class="btn btn--ghost btn--sm" onclick="seleccionar(${p.id}, '${p.clave}')">Calendario</button>
+              ${!p.activo ? `<button class="btn btn--soft btn--sm" onclick="activar(${p.id})">Activar</button>` : ''}
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+    // Auto-seleccionar el activo
+    const activo = r.data.find(p => p.activo);
+    if (activo && !periodoSeleccionado) seleccionar(activo.id, activo.clave);
+  } catch (_) { toast('Error', 'danger'); }
+}
+
+async function seleccionar(id, clave) {
+  periodoSeleccionado = id;
+  document.getElementById('cal-context').innerHTML = `Calendario del periodo <strong>${clave}</strong>:`;
+  document.getElementById('btn-nuevo-evento').disabled = false;
+  await loadCalendario();
+}
+
+async function loadCalendario() {
+  if (!periodoSeleccionado) return;
+  try {
+    const r = await api(`/api/v1/periodos/${periodoSeleccionado}/calendario`);
+    if (!r.eventos.length) {
+      document.getElementById('cal-host').innerHTML = '<p class="text-muted">Sin eventos. Agrega el primero.</p>';
+      return;
+    }
+    document.getElementById('cal-host').innerHTML = '<div class="stack">' + r.eventos.map(e => `
+      <div class="card" style="border-left: 4px solid ${e.color || 'var(--navy-500)'};">
+        <div class="flex items-center gap-2 mb-1">
+          <strong>${e.titulo}</strong>
+          <span class="badge badge--neutral">${e.tipo}</span>
+          <span class="badge badge--navy">${e.aplica_a}</span>
+        </div>
+        <div class="b-12 text-muted mono-12">${e.fecha_inicio}${e.fecha_fin && e.fecha_fin !== e.fecha_inicio ? ' → ' + e.fecha_fin : ''}</div>
+        ${e.descripcion ? `<div class="b-14 mt-2">${e.descripcion}</div>` : ''}
+      </div>`).join('') + '</div>';
+  } catch (_) {}
+}
+
+async function activar(id) {
+  if (!confirm('¿Activar este periodo? Los demás del plantel se desactivarán.')) return;
+  try {
+    await api(`/api/v1/periodos/${id}/activar`, { method: 'POST' });
+    toast('Periodo activado', 'success');
+    loadPeriodos();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+document.getElementById('p-save').addEventListener('click', async () => {
+  const body = {
+    clave: document.getElementById('p-clave').value,
+    nombre: document.getElementById('p-nombre').value,
+    fecha_inicio: document.getElementById('p-inicio').value,
+    fecha_fin: document.getElementById('p-fin').value,
+  };
+  if (!body.clave || !body.fecha_inicio || !body.fecha_fin) {
+    return toast('Faltan campos', 'warning');
+  }
+  try {
+    await api('/api/v1/periodos', { method: 'POST', body: JSON.stringify(body) });
+    toast('Periodo creado', 'success');
+    document.getElementById('dlg-periodo').classList.remove('open');
+    loadPeriodos();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+document.getElementById('e-save').addEventListener('click', async () => {
+  if (!periodoSeleccionado) return;
+  const body = {
+    titulo: document.getElementById('e-titulo').value,
+    descripcion: document.getElementById('e-desc').value,
+    tipo: document.getElementById('e-tipo').value,
+    aplica_a: document.getElementById('e-aud').value,
+    fecha_inicio: document.getElementById('e-inicio').value,
+    fecha_fin: document.getElementById('e-fin').value || null,
+  };
+  if (!body.titulo || !body.fecha_inicio) return toast('Faltan campos', 'warning');
+  try {
+    await api(`/api/v1/periodos/${periodoSeleccionado}/calendario`,
+              { method: 'POST', body: JSON.stringify(body) });
+    toast('Evento creado', 'success');
+    document.getElementById('dlg-evento').classList.remove('open');
+    loadCalendario();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+loadPeriodos();
+</script>
+{% endblock %}

@@ -1,0 +1,266 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import status_badge, avatar, empty_state %}
+{% block title %}Grupo · {{ inscripcion.materia.nombre if inscripcion.materia else '—' }}{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('web_profesor.profesor_dashboard') }}">Profesor</a>
+    <span class="breadcrumbs__sep">/</span>
+    <span>Grupo {{ inscripcion.grupo or 'A' }}</span>
+  </nav>
+
+  <h1 class="d-32 mb-2">{{ inscripcion.materia.nombre if inscripcion.materia else '—' }}</h1>
+  <p class="b-16 text-muted mb-6">
+    {{ inscripcion.materia.clave if inscripcion.materia else '' }} ·
+    Grupo {{ inscripcion.grupo or 'A' }} ·
+    {{ grupo_estudiantes|length }} estudiantes
+  </p>
+
+  <div class="tabs mb-6" id="grupo-tabs">
+    <button class="tabs__item active" data-tab="estudiantes">Estudiantes</button>
+    <button class="tabs__item" data-tab="calificaciones">Calificaciones</button>
+    <button class="tabs__item" data-tab="asistencia">Pasar lista</button>
+  </div>
+
+  {# ============== ESTUDIANTES ============== #}
+  <div data-pane="estudiantes">
+    {% if grupo_estudiantes %}
+      <table class="data-table">
+        <thead><tr><th>Estudiante</th><th>Expediente</th><th>Estado</th></tr></thead>
+        <tbody>
+          {% for ins in grupo_estudiantes %}
+            <tr>
+              <td><div class="flex items-center gap-2">{{ avatar(ins.estudiante, size='sm') }} {{ ins.estudiante.nombre_completo }}</div></td>
+              <td><span class="mono-12">{{ ins.estudiante.expediente or '—' }}</span></td>
+              <td>{{ status_badge(ins.estado) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      {{ empty_state('Sin estudiantes en este grupo', icon='∅') }}
+    {% endif %}
+  </div>
+
+  {# ============== CALIFICACIONES ============== #}
+  <div data-pane="calificaciones" class="hidden">
+    <p class="b-14 text-muted mb-4">
+      Captura calificaciones por estudiante y parcial. Los cambios se guardan
+      al perder el foco. Para que el estudiante vea sus notas, presiona
+      <strong>Publicar</strong> en cada fila.
+    </p>
+    {% if grupo_estudiantes %}
+      <table class="data-table">
+        <thead><tr>
+          <th>Estudiante</th>
+          <th>P1</th><th>P2</th><th>P3</th><th>Ord.</th><th>Final</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          {% for ins in grupo_estudiantes %}
+            <tr data-inscripcion-id="{{ ins.id }}">
+              <td>
+                <div class="flex items-center gap-2">
+                  {{ avatar(ins.estudiante, size='sm') }}
+                  <div>
+                    <div>{{ ins.estudiante.nombre_completo }}</div>
+                    <div class="b-12 text-soft">{{ ins.estudiante.expediente or '' }}</div>
+                  </div>
+                </div>
+              </td>
+              {% for tipo in ['parcial_1', 'parcial_2', 'parcial_3', 'ordinario', 'final'] %}
+                <td>
+                  <input type="number" min="0" max="10" step="0.1"
+                         class="input calif-input"
+                         style="width: 64px; padding: 4px 6px; height: 32px;"
+                         data-inscripcion-id="{{ ins.id }}"
+                         data-tipo="{{ tipo }}"
+                         placeholder="—" />
+                </td>
+              {% endfor %}
+              <td>
+                <button class="btn btn--soft btn--sm" onclick="publicar({{ ins.id }})">
+                  Publicar
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      {{ empty_state('Sin estudiantes', icon='∅') }}
+    {% endif %}
+  </div>
+
+  {# ============== ASISTENCIA / PASAR LISTA ============== #}
+  <div data-pane="asistencia" class="hidden">
+    <div class="flex items-center gap-3 mb-4" style="flex-wrap: wrap;">
+      <label class="b-14">Fecha:</label>
+      <input class="input" id="asist-fecha" type="date" style="max-width: 180px;" />
+      <label class="b-14">Bloque:</label>
+      <select class="select" id="asist-bloque" style="max-width: 320px;">
+        <option value="">Selecciona…</option>
+      </select>
+      <button class="btn btn--ghost btn--sm" id="todos-presentes">Marcar todos presentes</button>
+      <button class="btn btn--primary" id="guardar-asistencia">Guardar lista</button>
+    </div>
+
+    {% if grupo_estudiantes %}
+      <div class="stack" id="asist-list">
+        {% for ins in grupo_estudiantes %}
+          <div class="card flex items-center justify-between" data-inscripcion-id="{{ ins.id }}">
+            <div class="flex items-center gap-2">
+              {{ avatar(ins.estudiante, size='sm') }}
+              <div>
+                <div><strong>{{ ins.estudiante.nombre_completo }}</strong></div>
+                <div class="b-12 text-soft">{{ ins.estudiante.expediente or '' }}</div>
+              </div>
+            </div>
+            <div class="tabs-segmented">
+              {% for est in [('presente', '✓ Pres.'), ('ausente', '✗ Aus.'),
+                             ('justificado', '· Just.'), ('retardo', '↻ Ret.')] %}
+                <button class="tabs-segmented__item asist-btn{% if loop.first %} active{% endif %}"
+                        data-estado="{{ est[0] }}"
+                        data-inscripcion-id="{{ ins.id }}">{{ est[1] }}</button>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ empty_state('Sin estudiantes', icon='∅') }}
+    {% endif %}
+  </div>
+</div>
+
+<script>
+const INSCRIPCION_ACTUAL = {{ inscripcion.id }};
+const HOY = new Date().toISOString().slice(0, 10);
+
+document.querySelectorAll('#grupo-tabs .tabs__item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#grupo-tabs .tabs__item').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('[data-pane]').forEach(p =>
+      p.classList.toggle('hidden', p.dataset.pane !== b.dataset.tab));
+  });
+});
+
+// === CALIFICACIONES: cargar valores actuales y guardar al cambiar ===
+async function cargarCalificaciones() {
+  const inputs = document.querySelectorAll('.calif-input');
+  const seen = new Set();
+  for (const inp of inputs) {
+    const id = inp.dataset.inscripcionId;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    try {
+      const r = await api(`/api/v1/inscripciones/${id}/calificaciones`);
+      for (const c of (r.calificaciones || [])) {
+        const target = document.querySelector(
+          `.calif-input[data-inscripcion-id="${id}"][data-tipo="${c.tipo}"]`);
+        if (target && c.valor != null) target.value = c.valor;
+      }
+    } catch (_) { /* sin calificaciones todavía */ }
+  }
+}
+
+document.querySelectorAll('.calif-input').forEach(inp => {
+  inp.addEventListener('change', async () => {
+    const insId = inp.dataset.inscripcionId;
+    const tipo = inp.dataset.tipo;
+    const valor = inp.value === '' ? null : parseFloat(inp.value);
+    if (valor !== null && (valor < 0 || valor > 10)) {
+      toast('Valor inválido', 'warning', 'Debe estar entre 0 y 10');
+      inp.value = ''; return;
+    }
+    try {
+      await api(`/api/v1/inscripciones/${insId}/calificaciones`, {
+        method: 'PUT', body: JSON.stringify({ tipo, valor })
+      });
+      inp.style.borderColor = 'var(--success)';
+      setTimeout(() => inp.style.borderColor = '', 800);
+    } catch (e) {
+      toast('No se pudo guardar', 'danger', e.body?.error || '');
+      inp.style.borderColor = 'var(--danger)';
+    }
+  });
+});
+
+async function publicar(insId) {
+  if (!confirm('¿Publicar todas las calificaciones de este estudiante? '
+               + 'El estudiante recibirá una notificación.')) return;
+  try {
+    await api(`/api/v1/inscripciones/${insId}/calificaciones/publicar`, {
+      method: 'POST'
+    });
+    toast('Calificaciones publicadas', 'success');
+  } catch (e) {
+    toast('Error', 'danger', e.body?.error || '');
+  }
+}
+
+// === ASISTENCIA ===
+const estadosAsist = {};
+document.getElementById('asist-fecha').value = HOY;
+
+async function cargarBloques() {
+  try {
+    const r = await api('/api/v1/horarios/admin/vista-profesor?profesor_id={{ user.id }}');
+    const bloques = (r.bloques || []).filter(b =>
+      b.materia && b.materia.id === {{ inscripcion.materia_id }});
+    const sel = document.getElementById('asist-bloque');
+    sel.innerHTML = '<option value="">Selecciona…</option>' +
+      bloques.map(b => `<option value="${b.id}">${({lun:'Lun',mar:'Mar',mie:'Mié',jue:'Jue',vie:'Vie',sab:'Sáb'})[b.dia]} ${b.hora_inicio}–${b.hora_fin} · ${b.salon?.codigo || ''}</option>`).join('');
+  } catch (_) {}
+}
+cargarBloques();
+
+document.querySelectorAll('.asist-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.inscripcionId;
+    const estado = btn.dataset.estado;
+    document.querySelectorAll(`.asist-btn[data-inscripcion-id="${id}"]`)
+      .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    estadosAsist[id] = estado;
+  });
+});
+
+document.getElementById('todos-presentes').addEventListener('click', () => {
+  document.querySelectorAll('[data-inscripcion-id]').forEach(row => {
+    const id = row.dataset.inscripcionId;
+    if (!id) return;
+    estadosAsist[id] = 'presente';
+    row.querySelectorAll('.asist-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.estado === 'presente'));
+  });
+});
+
+document.getElementById('guardar-asistencia').addEventListener('click', async () => {
+  const fecha = document.getElementById('asist-fecha').value;
+  const bloqueId = parseInt(document.getElementById('asist-bloque').value);
+  if (!fecha || !bloqueId) {
+    return toast('Selecciona fecha y bloque', 'warning');
+  }
+  // Inicializar todos por defecto a 'presente' si no se tocaron
+  const registros = [];
+  document.querySelectorAll('#asist-list [data-inscripcion-id]').forEach(row => {
+    const id = parseInt(row.dataset.inscripcionId);
+    registros.push({ inscripcion_id: id, estado: estadosAsist[id] || 'presente' });
+  });
+  try {
+    const r = await api('/api/v1/inscripciones/asistencia/masiva', {
+      method: 'POST',
+      body: JSON.stringify({ bloque_id: bloqueId, fecha, registros }),
+    });
+    toast('Lista guardada', 'success', `${r.procesados} estudiantes registrados`);
+  } catch (e) {
+    toast('Error', 'danger', e.body?.error || '');
+  }
+});
+
+cargarCalificaciones();
+</script>
+{% endblock %}

@@ -1,0 +1,342 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import button, badge, status_badge, role_tag,
+    avatar, alert, empty_state, salon_card, content_card, stat_card,
+    schedule_grid %}
+{% block title %}Sistema de componentes · MapSchool{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <div class="grid" style="grid-template-columns: 220px 1fr; gap: var(--s-8);">
+    <aside>
+      <nav class="demo-toc">
+        <strong>Componentes</strong>
+        <a href="#colores">01 Colores</a>
+        <a href="#tipografia">02 Tipografía</a>
+        <a href="#botones">03 Botones</a>
+        <a href="#inputs">04 Inputs</a>
+        <a href="#form-controls">05 Form controls</a>
+        <a href="#badges">06 Badges + Tags</a>
+        <a href="#avatars">07 Avatars</a>
+        <a href="#tabs">08 Tabs</a>
+        <a href="#alerts">09 Alerts</a>
+        <a href="#toasts">10 Toasts</a>
+        <a href="#dialogs">11 Dialogs</a>
+        <a href="#dropdown">12 Dropdown</a>
+        <a href="#tooltip">13 Tooltip</a>
+        <a href="#pagination">14 Pagination</a>
+        <a href="#cards">15 Cards</a>
+        <a href="#stats">16 Stat cards</a>
+        <a href="#table">17 Data table</a>
+        <a href="#empty">18 Empty states</a>
+        <a href="#schedule">19 Schedule grid</a>
+        <a href="#notifs">20 Notificaciones</a>
+      </nav>
+    </aside>
+
+    <div>
+      <h1 class="d-32 mb-2">MapSchool · sistema de componentes</h1>
+      <p class="b-16 text-muted mb-8">Datos reales del seed. Solo visible en DEBUG.</p>
+
+      <section id="colores" class="demo-section">
+        <h2 class="demo-section__title">01 · Colores</h2>
+        <p class="demo-section__sub">Tokens del sistema. Usa siempre <code>var(--token)</code>.</p>
+        <div class="demo-grid" style="grid-template-columns: repeat(4, 1fr);">
+          {% for name, hex in [('navy-950','#0B1423'),('navy-900','#031633'),('navy-800','#172846'),('navy-700','#233C5B'),('navy-600','#304B7A'),('navy-500','#3C61A5'),('navy-400','#6DB4D2'),('navy-200','#CFE2FF'),('ink-900','#212529'),('ink-700','#495057'),('ink-500','#9899A8'),('line-300','#DEE2E6'),('success','#28A745'),('warning','#F2B705'),('danger','#DC3545'),('info','#0D6EFD')] %}
+            <div class="demo-swatch">
+              <div class="demo-swatch__chip" style="background: {{ hex }};"></div>
+              <div><div class="b-12">{{ name }}</div><div class="demo-swatch__hex">{{ hex }}</div></div>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="tipografia" class="demo-section">
+        <h2 class="demo-section__title">02 · Tipografía</h2>
+        <div class="stack">
+          <div class="d-72">D/72 Lexend Display</div>
+          <div class="d-48">D/48 Lexend</div>
+          <div class="d-32">D/32 Lexend</div>
+          <div class="d-24">D/24 Lexend</div>
+          <div class="d-20">D/20 Lexend</div>
+          <div class="b-16">B/16 DM Sans · cuerpo principal con un párrafo de muestra para evaluar lectura.</div>
+          <div class="b-14">B/14 DM Sans · texto secundario.</div>
+          <div class="mono-12">MONO/12 · DM MONO 002</div>
+          <div class="mono-10">MONO/10 · CHIPS Y BADGES</div>
+        </div>
+      </section>
+
+      <section id="botones" class="demo-section">
+        <h2 class="demo-section__title">03 · Botones</h2>
+        <div class="demo-grid" style="grid-template-columns: repeat(3, 1fr);">
+          {{ button('Primary M', variant='primary') }}
+          {{ button('Secondary M', variant='secondary') }}
+          {{ button('Outline M', variant='outline') }}
+          {{ button('Ghost M', variant='ghost') }}
+          {{ button('Danger M', variant='danger') }}
+          {{ button('Soft M', variant='soft') }}
+          {{ button('Primary L', variant='primary', size='lg') }}
+          {{ button('Primary S', variant='primary', size='sm') }}
+          {{ button('Disabled', variant='primary', disabled=True) }}
+        </div>
+      </section>
+
+      <section id="inputs" class="demo-section">
+        <h2 class="demo-section__title">04 · Inputs</h2>
+        <div class="demo-grid" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="field">
+            <label class="field__label">Default</label>
+            <input class="input" placeholder="Texto..." />
+          </div>
+          <div class="field field--success">
+            <label class="field__label">Success</label>
+            <input class="input" value="✓ aprobado" />
+          </div>
+          <div class="field field--has-error">
+            <label class="field__label">Error</label>
+            <input class="input" value="—" />
+            <div class="field__error">Este valor no es válido</div>
+          </div>
+          <div class="field">
+            <label class="field__label">Disabled</label>
+            <input class="input" disabled value="Bloqueado" />
+          </div>
+          <div class="field">
+            <label class="field__label">Textarea</label>
+            <textarea class="textarea" placeholder="Escribe…"></textarea>
+          </div>
+          <div class="field">
+            <label class="field__label">Select</label>
+            <select class="select"><option>Opción A</option><option>Opción B</option></select>
+          </div>
+        </div>
+      </section>
+
+      <section id="form-controls" class="demo-section">
+        <h2 class="demo-section__title">05 · Form controls</h2>
+        <div class="demo-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <label class="checkbox"><input type="checkbox" checked /> Checkbox</label>
+          <label class="radio"><input type="radio" name="r" checked /> Radio</label>
+          <label class="switch"><input type="checkbox" checked /><span class="switch__slider"></span></label>
+          <input type="range" class="slider" min="0" max="100" value="60" />
+        </div>
+      </section>
+
+      <section id="badges" class="demo-section">
+        <h2 class="demo-section__title">06 · Badges + Tags</h2>
+        <div class="flex gap-3 mb-4" style="flex-wrap: wrap;">
+          {{ badge('Neutral') }} {{ badge('Success', 'success') }}
+          {{ badge('Warning', 'warning') }} {{ badge('Danger', 'danger') }}
+          {{ badge('Info', 'info') }} {{ badge('Navy', 'navy') }}
+        </div>
+        <div class="flex gap-3">
+          {% for r in ['rector','director','coordinador','profesor','admin','estudiante','invitado','aspirante'] %}
+            {{ role_tag(r) }}
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="avatars" class="demo-section">
+        <h2 class="demo-section__title">07 · Avatars</h2>
+        <div class="flex gap-3 items-center">
+          {% for u in users[:5] %}
+            {{ avatar(u, size='xs') }}
+          {% endfor %}
+          {% for u in users[:5] %}
+            {{ avatar(u, size='sm') }}
+          {% endfor %}
+          {% for u in users[:5] %}
+            {{ avatar(u, size='md') }}
+          {% endfor %}
+          {% if users %}{{ avatar(users[0], size='lg', show_status=True) }}{% endif %}
+          {% if users %}{{ avatar(users[1] if users|length > 1 else users[0], size='xl') }}{% endif %}
+        </div>
+      </section>
+
+      <section id="tabs" class="demo-section">
+        <h2 class="demo-section__title">08 · Tabs</h2>
+        <div class="tabs">
+          <button class="tabs__item active">Resumen</button>
+          <button class="tabs__item">Horario 13</button>
+          <button class="tabs__item">Calificaciones</button>
+          <button class="tabs__item">Asistencia 94%</button>
+        </div>
+        <div class="tabs-segmented">
+          <button class="tabs-segmented__item active">Semana</button>
+          <button class="tabs-segmented__item">Día</button>
+          <button class="tabs-segmented__item">Lista</button>
+        </div>
+      </section>
+
+      <section id="alerts" class="demo-section">
+        <h2 class="demo-section__title">09 · Alerts</h2>
+        <div class="stack">
+          {{ alert('Aviso informativo. Tu horario fue actualizado.', variant='info', title='Información') }}
+          {{ alert('Operación completada con éxito.', variant='success', title='Listo', dismissible=True) }}
+          {{ alert('Detectamos un conflicto en tu agenda del miércoles 11:00.', variant='warning', title='Atención') }}
+          {{ alert('No pudimos publicar tu horario por un error.', variant='danger', title='Error') }}
+        </div>
+      </section>
+
+      <section id="toasts" class="demo-section">
+        <h2 class="demo-section__title">10 · Toasts</h2>
+        <div class="flex gap-3">
+          <button class="btn btn--soft" onclick="toast('Toast neutral', 'info', 'Mensaje secundario')">Info</button>
+          <button class="btn btn--soft" onclick="toast('¡Listo!', 'success', 'Operación realizada')">Success</button>
+          <button class="btn btn--soft" onclick="toast('Atención', 'warning', 'Revisa tu horario')">Warning</button>
+          <button class="btn btn--soft" onclick="toast('Error', 'danger', 'Algo salió mal')">Danger</button>
+        </div>
+      </section>
+
+      <section id="dialogs" class="demo-section">
+        <h2 class="demo-section__title">11 · Dialogs</h2>
+        <div class="flex gap-3">
+          <button class="btn btn--primary" data-dialog-open="dlg-confirm">Abrir confirmación</button>
+          <button class="btn btn--danger" data-dialog-open="dlg-destruct">Abrir destructivo</button>
+        </div>
+
+        <div class="dialog-backdrop" id="dlg-confirm">
+          <div class="dialog">
+            <div class="dialog__header">
+              <span class="dialog__title">Confirmar acción</span>
+              <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="dialog__body">¿Quieres publicar tu horario?</div>
+            <div class="dialog__footer">
+              <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+              <button class="btn btn--primary">Publicar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="dialog-backdrop" id="dlg-destruct">
+          <div class="dialog dialog--danger">
+            <div class="dialog__header">
+              <span class="dialog__title">Eliminar usuario</span>
+              <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="dialog__body">
+              <div class="dialog__danger-zone"><strong>Zona peligrosa.</strong> Esta acción es irreversible.</div>
+              <p class="b-14 mb-2">Escribe <code>eliminar</code> para confirmar:</p>
+              <input class="input" />
+            </div>
+            <div class="dialog__footer">
+              <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+              <button class="btn btn--danger">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dropdown" class="demo-section">
+        <h2 class="demo-section__title">12 · Dropdown menu</h2>
+        <div class="dropdown" data-dropdown>
+          <button class="btn btn--secondary" data-dropdown-trigger>Opciones ▾</button>
+          <div class="dropdown__menu">
+            <button class="dropdown__item">Editar <span class="dropdown__shortcut">⌘E</span></button>
+            <button class="dropdown__item">Duplicar <span class="dropdown__shortcut">⌘D</span></button>
+            <div class="dropdown__divider"></div>
+            <button class="dropdown__item dropdown__item--danger">Eliminar <span class="dropdown__shortcut">⌘⌫</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tooltip" class="demo-section">
+        <h2 class="demo-section__title">13 · Tooltip + Breadcrumbs</h2>
+        <div class="flex gap-4">
+          <span class="tooltip">
+            <button class="btn btn--soft">Hover sobre mí</button>
+            <span class="tooltip__pop">Texto del tooltip</span>
+          </span>
+          <nav class="breadcrumbs">
+            <a href="#">Inicio</a><span class="breadcrumbs__sep">/</span>
+            <a href="#">Salones</a><span class="breadcrumbs__sep">/</span>
+            <span>A-203</span>
+          </nav>
+        </div>
+      </section>
+
+      <section id="pagination" class="demo-section">
+        <h2 class="demo-section__title">14 · Pagination</h2>
+        <div class="pagination">
+          <span class="pagination__info">Mostrando 1–25 de 142</span>
+          <button class="pagination__btn" disabled>‹</button>
+          <button class="pagination__btn active">1</button>
+          <button class="pagination__btn">2</button>
+          <button class="pagination__btn">3</button>
+          <button class="pagination__btn">4</button>
+          <span>…</span>
+          <button class="pagination__btn">6</button>
+          <button class="pagination__btn">›</button>
+        </div>
+      </section>
+
+      <section id="cards" class="demo-section">
+        <h2 class="demo-section__title">15 · Cards</h2>
+        <div class="grid grid-3">
+          <div class="card card--info"><div class="card__title">Info card</div><div class="card__sub">Variante neutral.</div></div>
+          <div class="card card--info-success"><div class="card__title">Éxito</div><div class="card__sub">Operación realizada.</div></div>
+          <div class="card card--info-warning"><div class="card__title">Advertencia</div><div class="card__sub">Revisa tu horario.</div></div>
+        </div>
+        <div class="grid grid-3 mt-4">
+          {% for s in salones[:3] %}
+            {{ salon_card(s, href=url_for('web_public.salon_detalle', codigo=s.codigo), disponible=True) }}
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="stats" class="demo-section">
+        <h2 class="demo-section__title">16 · Stat cards</h2>
+        <div class="grid grid-4">
+          {{ stat_card('Estudiantes activos', '14,218', delta=2, periodo='vs sem. anterior', sparkline=[3,5,4,6,8,7,9,12]) }}
+          {{ stat_card('Horarios publicados', '86 / 92', delta=7, periodo='esta semana', sparkline=[2,4,6,5,8,9,11,13]) }}
+          {{ stat_card('Conflictos abiertos', '12', delta=-3, periodo='desde el lunes', sparkline=[18,17,15,14,13,12,12,12]) }}
+          {{ stat_card('Asistencia promedio', '93%', delta=0, periodo='sin cambio', sparkline=[91,92,93,93,93,92,93,93]) }}
+        </div>
+      </section>
+
+      <section id="table" class="demo-section">
+        <h2 class="demo-section__title">17 · Data table</h2>
+        <table class="data-table">
+          <thead><tr>
+            <th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th>
+          </tr></thead>
+          <tbody>
+            {% for u in users[:6] %}
+              <tr {% if loop.index == 2 %}class="selected"{% endif %}>
+                <td><div class="flex items-center gap-2">{{ avatar(u, size='sm') }} {{ u.nombre_completo }}</div></td>
+                <td>{{ u.email }}</td>
+                <td>{{ role_tag(u.rol) }}</td>
+                <td>{{ status_badge(u.estado) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section id="empty" class="demo-section">
+        <h2 class="demo-section__title">18 · Empty states</h2>
+        <div class="grid grid-3">
+          <div class="card">{{ empty_state('Sin elementos', 'Aún no hay nada por aquí.', icon='∅') }}</div>
+          <div class="card">{{ empty_state('Sin resultados', 'Ajusta los filtros.', icon='🔎') }}</div>
+          <div class="card">{{ empty_state('Error de carga', 'No pudimos obtener datos.', icon='⚠', cta='Reintentar', cta_href='#') }}</div>
+        </div>
+      </section>
+
+      <section id="schedule" class="demo-section">
+        <h2 class="demo-section__title">19 · Schedule grid</h2>
+        {% if bloques %}
+          {{ schedule_grid(bloques) }}
+        {% else %}
+          {{ empty_state('Sin horario', 'Pobla la BD con seed.py.', icon='📅') }}
+        {% endif %}
+      </section>
+
+      <section id="notifs" class="demo-section">
+        <h2 class="demo-section__title">20 · Notificaciones</h2>
+        <p class="b-14 text-muted">Inicia sesión y haz click en el ícono de campana en la barra superior para ver el panel.</p>
+        <button class="btn btn--soft mt-3" onclick="toast('Tienes una nueva calificación', 'info', 'INF-403 · Programación Web')">Disparar notificación de prueba</button>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

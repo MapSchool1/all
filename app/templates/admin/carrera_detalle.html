@@ -1,0 +1,132 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}{{ carrera.nombre }} · Plan de estudios{% endblock %}
+
+{% block admin_content %}
+<nav class="breadcrumbs">
+  <a href="{{ url_for('web_admin.carreras') }}">Carreras</a>
+  <span class="breadcrumbs__sep">/</span>
+  <span>{{ carrera.nombre_corto or carrera.nombre }}</span>
+</nav>
+
+<h1 class="d-32 mb-2">{{ carrera.nombre }}</h1>
+<p class="b-16 text-muted mb-6">Plan de estudios · {{ carrera.duracion_semestres }} semestres</p>
+
+<div class="flex gap-3 mb-6">
+  <button class="btn btn--primary" data-dialog-open="dlg-mat">+ Agregar materia</button>
+</div>
+
+<div id="plan-host"><p class="text-muted">Cargando…</p></div>
+
+<div class="dialog-backdrop" id="dlg-mat">
+  <div class="dialog">
+    <div class="dialog__header"><span class="dialog__title">Nueva materia</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button></div>
+    <div class="dialog__body">
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Clave</label><input class="input" id="m-clave" /></div>
+        <div class="field"><label class="field__label">Semestre</label>
+          <select class="select" id="m-sem">
+            {% for s in range(1, carrera.duracion_semestres + 1) %}
+              <option value="{{ s }}">Sem {{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label class="field__label">Nombre</label><input class="input" id="m-nombre" /></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Tipo</label>
+          <select class="select" id="m-tipo">
+            <option value="tronco_comun">Tronco común</option>
+            <option value="area_profesional">Área profesional</option>
+            <option value="laboratorio">Laboratorio</option>
+            <option value="idiomas">Idiomas</option>
+          </select>
+        </div>
+        <div class="field"><label class="field__label">Créditos</label><input class="input" type="number" id="m-cred" value="6" /></div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="m-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CARRERA_ID = {{ carrera.id }};
+const SEMESTRES = {{ carrera.duracion_semestres }};
+
+async function loadPlan() {
+  try {
+    const r = await api(`/api/v1/materias?carrera_id=${CARRERA_ID}&activa=true`);
+    const bySem = {};
+    for (let s = 1; s <= SEMESTRES; s++) bySem[s] = [];
+    r.data.forEach(m => { (bySem[m.semestre] = bySem[m.semestre] || []).push(m); });
+    let html = '<div class="stack-lg">';
+    for (let s = 1; s <= SEMESTRES; s++) {
+      const ms = bySem[s] || [];
+      html += `
+        <section>
+          <h3 class="d-20 mb-3">Semestre ${s} <span class="text-muted b-14">(${ms.length} materias · ${ms.reduce((a,m) => a + m.creditos, 0)} cred.)</span></h3>
+          ${ms.length === 0
+            ? '<p class="text-muted b-14">Sin materias.</p>'
+            : '<div class="grid grid-3">' + ms.map(m => `
+              <div class="card" style="border-left: 4px solid var(--bloque-${({tronco_comun:'tronco-comun',area_profesional:'area-profesional',laboratorio:'laboratorio',idiomas:'idiomas'})[m.tipo]||'tronco-comun'});">
+                <div class="b-12 text-soft mono-12">${m.clave}</div>
+                <div class="d-20 mt-1">${m.nombre}</div>
+                <div class="flex gap-2 mt-3">
+                  <span class="badge badge--navy">${m.tipo.replace('_', ' ')}</span>
+                  <span class="badge badge--neutral">${m.creditos} cred.</span>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <button class="btn btn--ghost btn--sm" onclick="moverSem(${m.id}, ${m.semestre - 1})" ${m.semestre <= 1 ? 'disabled' : ''}>← Sem ${m.semestre - 1}</button>
+                  <button class="btn btn--ghost btn--sm" onclick="moverSem(${m.id}, ${m.semestre + 1})" ${m.semestre >= SEMESTRES ? 'disabled' : ''}>Sem ${m.semestre + 1} →</button>
+                  <button class="btn btn--ghost btn--sm" style="color: var(--danger); margin-left: auto;" onclick="eliminar(${m.id})">Borrar</button>
+                </div>
+              </div>`).join('') + '</div>'}
+        </section>`;
+    }
+    html += '</div>';
+    document.getElementById('plan-host').innerHTML = html;
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+async function moverSem(materiaId, nuevoSem) {
+  try {
+    await api(`/api/v1/materias/${materiaId}`, { method: 'PUT',
+      body: JSON.stringify({ semestre: nuevoSem }) });
+    toast('Materia movida', 'success');
+    loadPlan();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+async function eliminar(materiaId) {
+  if (!confirm('¿Eliminar materia? (soft-delete)')) return;
+  try {
+    await api(`/api/v1/materias/${materiaId}`, { method: 'DELETE' });
+    toast('Materia eliminada', 'success');
+    loadPlan();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+document.getElementById('m-save').addEventListener('click', async () => {
+  const body = {
+    clave: document.getElementById('m-clave').value,
+    nombre: document.getElementById('m-nombre').value,
+    carrera_id: CARRERA_ID,
+    semestre: parseInt(document.getElementById('m-sem').value),
+    tipo: document.getElementById('m-tipo').value,
+    creditos: parseInt(document.getElementById('m-cred').value),
+    activa: true,
+  };
+  try {
+    await api('/api/v1/materias', { method: 'POST', body: JSON.stringify(body) });
+    toast('Materia creada', 'success');
+    document.getElementById('dlg-mat').classList.remove('open');
+    loadPlan();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+loadPlan();
+</script>
+{% endblock %}

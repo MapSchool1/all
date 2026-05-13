@@ -1,0 +1,195 @@
+{# Macros del sistema MapSchool. Importar en cada plantilla:
+   {% from 'components/_macros.html' import button, badge, status_badge, role_tag,
+       avatar, alert, empty_state, salon_card, content_card, stat_card,
+       schedule_grid, dialog %}
+#}
+
+{# ============== Button ============== #}
+{% macro button(label, variant='primary', size='md', type='button',
+                href=None, icon=None, disabled=False, attrs='', extra_class='') %}
+  {% set base = 'btn btn--' + variant %}
+  {% if size == 'sm' %}{% set base = base + ' btn--sm' %}{% endif %}
+  {% if size == 'lg' %}{% set base = base + ' btn--lg' %}{% endif %}
+  {% if extra_class %}{% set base = base + ' ' + extra_class %}{% endif %}
+  {% if href %}
+    <a class="{{ base }}" href="{{ href }}" {{ attrs|safe }}>
+      {% if icon %}<span aria-hidden="true">{{ icon }}</span>{% endif %}{{ label }}
+    </a>
+  {% else %}
+    <button type="{{ type }}" class="{{ base }}" {% if disabled %}disabled{% endif %} {{ attrs|safe }}>
+      {% if icon %}<span aria-hidden="true">{{ icon }}</span>{% endif %}{{ label }}
+    </button>
+  {% endif %}
+{% endmacro %}
+
+{# ============== Badge / StatusBadge ============== #}
+{% macro badge(label, variant='neutral') %}
+  <span class="badge badge--{{ variant }}">{{ label }}</span>
+{% endmacro %}
+
+{% macro status_badge(estado) %}
+  {% set map = {'activo': 'success', 'publicado': 'success',
+                'borrador': 'neutral', 'en_revision': 'info',
+                'recibido': 'info', 'en_proceso': 'info',
+                'pendiente_pago': 'warning',
+                'listo': 'success', 'entregado': 'neutral',
+                'rechazado': 'danger', 'suspendido': 'warning',
+                'inactivo': 'neutral', 'eliminado': 'danger',
+                'archivado': 'neutral'} %}
+  {% set variant = map.get(estado, 'neutral') %}
+  <span class="badge badge--{{ variant }}">{{ estado.replace('_', ' ') }}</span>
+{% endmacro %}
+
+{% macro role_tag(rol) %}
+  <span class="role-tag role-tag--{{ rol }}">{{ rol }}</span>
+{% endmacro %}
+
+{# ============== Avatar ============== #}
+{% macro avatar(user, size='md', show_status=False) %}
+  <span class="avatar avatar--{{ size }}"
+        style="background: {{ user.avatar_color or '#172846' }}"
+        title="{{ user.nombre_completo }}">
+    {{ user.iniciales }}
+    {% if show_status %}<span class="avatar__status" style="background: var(--success);"></span>{% endif %}
+  </span>
+{% endmacro %}
+
+{# ============== Alert ============== #}
+{% macro alert(message, variant='info', title=None, dismissible=False) %}
+  <div class="alert alert--{{ variant }}" role="alert">
+    <div class="alert__body">
+      {% if title %}<div class="alert__title">{{ title }}</div>{% endif %}
+      <div>{{ message|safe }}</div>
+    </div>
+    {% if dismissible %}
+      <button class="alert__close" type="button" data-action="dismiss-alert" aria-label="Cerrar">×</button>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# ============== Empty state ============== #}
+{% macro empty_state(title, desc='', icon='○', cta=None, cta_href=None) %}
+  <div class="empty">
+    <div class="empty__icon">{{ icon }}</div>
+    <div class="empty__title">{{ title }}</div>
+    {% if desc %}<div class="empty__desc">{{ desc }}</div>{% endif %}
+    {% if cta and cta_href %}
+      <a class="btn btn--primary" href="{{ cta_href }}">{{ cta }}</a>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# ============== Salon card ============== #}
+{% macro salon_card(salon, href=None, disponible=None) %}
+  {% set tag = 'a' if href else 'div' %}
+  <{{ tag }} class="salon-card" {% if href %}href="{{ href }}"{% endif %}>
+    <div class="salon-card__head">
+      <div>
+        <div class="salon-card__codigo">{{ salon.codigo }}</div>
+        <div class="salon-card__nombre">{{ salon.nombre or '' }}</div>
+      </div>
+      {% if disponible is not none %}
+        <span class="dot {{ 'dot--success' if disponible else 'dot--warning' }}"
+              title="{{ 'Libre ahora' if disponible else 'Ocupado ahora' }}"></span>
+      {% endif %}
+    </div>
+    <div class="salon-card__meta">
+      {{ badge(salon.tipo|replace('_', ' '), 'navy') }}
+      <span>· {{ salon.capacidad }} cupos</span>
+      <span>· Piso {{ salon.piso }}</span>
+    </div>
+  </{{ tag }}>
+{% endmacro %}
+
+{# ============== Content card (carrera, etc.) ============== #}
+{% macro content_card(title, desc='', meta=None, cta='Ver detalle', href='#') %}
+  <article class="content-card">
+    <h3 class="content-card__title">{{ title }}</h3>
+    {% if desc %}<p class="content-card__desc">{{ desc }}</p>{% endif %}
+    {% if meta %}
+      <div class="content-card__meta">
+        {% for m in meta %}<span class="badge badge--neutral">{{ m }}</span>{% endfor %}
+      </div>
+    {% endif %}
+    <a class="content-card__cta" href="{{ href }}">{{ cta }} →</a>
+  </article>
+{% endmacro %}
+
+{# ============== Stat card (KPI) ============== #}
+{% macro stat_card(label, value, delta=None, periodo='', meta='', sparkline=None) %}
+  <div class="stat-card">
+    <div class="stat-card__label">{{ label }}</div>
+    <div class="stat-card__value">{{ value }}</div>
+    <div class="stat-card__meta">
+      {% if delta is not none %}
+        {% set cls = 'stat-card__delta--up' if delta > 0 else ('stat-card__delta--down' if delta < 0 else 'stat-card__delta--flat') %}
+        {% set sym = '▲' if delta > 0 else ('▼' if delta < 0 else '—') %}
+        <span class="stat-card__delta {{ cls }}">{{ sym }} {{ delta|abs }}{{ '%' if delta != 0 else '' }}</span>
+      {% endif %}
+      {% if periodo %}<span>{{ periodo }}</span>{% endif %}
+      {% if meta %}<span>{{ meta }}</span>{% endif %}
+    </div>
+    {% if sparkline %}
+      <svg class="stat-card__spark" viewBox="0 0 100 24" preserveAspectRatio="none">
+        {% set points = sparkline %}
+        {% set max_v = points|max if points|length else 1 %}
+        <polyline fill="none" stroke="var(--navy-500)" stroke-width="2"
+                  points="{% for v in points %}{{ loop.index0 * (100 / (points|length - 1 if points|length > 1 else 1)) }},{{ 24 - (v / max_v * 22) }} {% endfor %}" />
+      </svg>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# ============== Schedule grid ============== #}
+{% macro schedule_grid(bloques, hora_min=7, hora_max=20, editable=False) %}
+  {% set dias = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab'] %}
+  {% set dias_lbl = {'lun':'Lunes', 'mar':'Martes', 'mie':'Miércoles',
+                     'jue':'Jueves', 'vie':'Viernes', 'sab':'Sábado'} %}
+  {% set tipo_class = {'tronco_comun':'tronco-comun', 'area_profesional':'area-profesional',
+                       'laboratorio':'laboratorio', 'idiomas':'idiomas'} %}
+  <div class="schedule-grid" role="grid" aria-label="Horario semanal">
+    <div class="schedule-grid__header" role="columnheader">Hora</div>
+    {% for d in dias %}
+      <div class="schedule-grid__header" role="columnheader">{{ dias_lbl[d] }}</div>
+    {% endfor %}
+    {% for h in range(hora_min, hora_max + 1) %}
+      <div class="schedule-grid__time">{{ '%02d:00'|format(h) }}</div>
+      {% for d in dias %}
+        {# encontrar bloque que inicia en esta celda #}
+        {% set ns = namespace(bloque=None) %}
+        {% for b in bloques %}
+          {% set hi = b.hora_inicio.hour if b.hora_inicio.__class__.__name__ != 'str' else b.hora_inicio.split(':')[0]|int %}
+          {% if b.dia == d and hi == h %}{% set ns.bloque = b %}{% endif %}
+        {% endfor %}
+        {% set bloque = ns.bloque %}
+        <div class="schedule-grid__cell" data-dia="{{ d }}" data-hora="{{ h }}">
+          {% if bloque %}
+            {% set t_class = tipo_class.get(bloque.materia.tipo, 'tronco-comun') if bloque.materia else 'tronco-comun' %}
+            {% set hf = bloque.hora_fin.hour if bloque.hora_fin.__class__.__name__ != 'str' else bloque.hora_fin.split(':')[0]|int %}
+            {% set rows = (hf - h)|int %}
+            <button class="bloque bloque--{{ t_class }}{% if bloque.conflicto %} bloque--conflicto{% endif %}"
+                    style="height: calc(90px * {{ rows }} - 2px); position: absolute; top: 2px; left: 2px; right: 2px; z-index: 2;"
+                    data-bloque-id="{{ bloque.id }}"
+                    data-materia="{{ (bloque.materia.nombre if bloque.materia else '—')|escape }}"
+                    data-salon="{{ (bloque.salon.codigo if bloque.salon else '—')|escape }}"
+                    data-profesor="{{ (bloque.profesor.nombre_completo if bloque.profesor else '—')|escape }}"
+                    data-hora="{{ bloque.hora_inicio.strftime('%H:%M') if bloque.hora_inicio.__class__.__name__ != 'str' else bloque.hora_inicio }} – {{ bloque.hora_fin.strftime('%H:%M') if bloque.hora_fin.__class__.__name__ != 'str' else bloque.hora_fin }}">
+              <span class="bloque__titulo">{% if bloque.materia %}{{ bloque.materia.nombre_corto or bloque.materia.nombre }}{% else %}—{% endif %}</span>
+              <span class="bloque__sub">{% if bloque.salon %}{{ bloque.salon.codigo }}{% endif %}{% if bloque.profesor %} · {{ bloque.profesor.apellido_p }}{% endif %}</span>
+              {% if bloque.conflicto %}
+                <span class="bloque__conflicto-label">⚠ Conflicto</span>
+              {% endif %}
+            </button>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="schedule-legend">
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-tronco-comun);"></span>Tronco común</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-area-profesional);"></span>Área profesional</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-laboratorio);"></span>Laboratorio</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-idiomas);"></span>Idiomas</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-conflicto); border: 1px solid var(--danger);"></span>Conflicto</span>
+  </div>
+{% endmacro %}

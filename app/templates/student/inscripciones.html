@@ -1,0 +1,166 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import badge, status_badge, empty_state %}
+{% block title %}Inscripciones · Matute Guide{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <h1 class="d-32 mb-2">Inscripciones</h1>
+  {% if periodo %}
+    <p class="b-16 text-muted mb-6">
+      Periodo activo <strong>{{ periodo.clave }}</strong>.
+      Puedes inscribirte hasta el
+      {% if periodo.cierre_inscripciones %}
+        {{ periodo.cierre_inscripciones.strftime('%d %b %Y') }}.
+      {% else %} cierre del periodo.{% endif %}
+    </p>
+  {% else %}
+    {{ alert('Sin periodo activo. Espera a que el plantel abra inscripciones.', variant='warning') }}
+  {% endif %}
+
+  <div class="tabs mb-6" id="ins-tabs">
+    <button class="tabs__item active" data-tab="disponibles">Materias disponibles</button>
+    <button class="tabs__item" data-tab="mias">Mis inscripciones</button>
+  </div>
+
+  <div data-pane="disponibles">
+    <div class="flex gap-3 mb-4">
+      <select class="select" id="filtro-semestre" style="max-width: 120px;">
+        <option value="">Todos</option>
+        {% for s in range(1, 9) %}
+          <option value="{{ s }}" {% if user.semestre_actual == s %}selected{% endif %}>Sem {{ s }}</option>
+        {% endfor %}
+      </select>
+      <select class="select" id="filtro-tipo" style="max-width: 200px;">
+        <option value="">Todos los tipos</option>
+        <option value="tronco_comun">Tronco común</option>
+        <option value="area_profesional">Área profesional</option>
+        <option value="laboratorio">Laboratorio</option>
+        <option value="idiomas">Idiomas</option>
+      </select>
+    </div>
+    <div id="materias-host"><p class="text-muted">Cargando…</p></div>
+  </div>
+
+  <div data-pane="mias" class="hidden">
+    <div id="mias-host"><p class="text-muted">Cargando…</p></div>
+  </div>
+</div>
+
+<script>
+const CARRERA_ID = {{ user.carrera_id or 'null' }};
+const PERIODO_ID = {{ periodo.id if periodo else 'null' }};
+let inscripcionesIds = new Set();
+
+document.querySelectorAll('#ins-tabs .tabs__item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#ins-tabs .tabs__item').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('[data-pane]').forEach(p =>
+      p.classList.toggle('hidden', p.dataset.pane !== b.dataset.tab));
+    if (b.dataset.tab === 'mias') loadMias();
+  });
+});
+
+async function loadDisponibles() {
+  if (!CARRERA_ID) {
+    document.getElementById('materias-host').innerHTML =
+      '<div class="empty"><div class="empty__title">Sin carrera asignada</div><div class="empty__desc">Contacta a coordinación.</div></div>';
+    return;
+  }
+  const sem = document.getElementById('filtro-semestre').value;
+  const tipo = document.getElementById('filtro-tipo').value;
+  const params = new URLSearchParams({ carrera_id: CARRERA_ID, activa: 'true' });
+  if (sem) params.set('semestre', sem);
+  if (tipo) params.set('tipo', tipo);
+  try {
+    const r = await api('/api/v1/materias?' + params);
+    if (!r.data.length) {
+      document.getElementById('materias-host').innerHTML =
+        '<div class="empty"><div class="empty__icon">📚</div><div class="empty__title">Sin materias</div></div>';
+      return;
+    }
+    document.getElementById('materias-host').innerHTML = `
+      <div class="grid grid-3">${r.data.map(m => `
+        <div class="card" style="border-left: 4px solid var(--bloque-${({tronco_comun:'tronco-comun',area_profesional:'area-profesional',laboratorio:'laboratorio',idiomas:'idiomas'})[m.tipo] || 'tronco-comun'});">
+          <div class="b-12 text-soft mono-12">${m.clave}</div>
+          <div class="d-20 mt-1">${m.nombre}</div>
+          <div class="flex gap-2 mt-3">
+            <span class="badge badge--navy">Sem ${m.semestre}</span>
+            <span class="badge badge--neutral">${m.creditos} cred.</span>
+          </div>
+          <button class="btn btn--primary btn--sm mt-4 ${inscripcionesIds.has(m.id) ? 'hidden' : ''}"
+                  onclick="inscribir(${m.id}, this)">Inscribirme</button>
+          <div class="b-12 mt-4 ${inscripcionesIds.has(m.id) ? '' : 'hidden'}" style="color: var(--success);">
+            ✓ Ya inscrito
+          </div>
+        </div>`).join('')}</div>`;
+  } catch (e) {
+    toast('No se pudo cargar', 'danger', e.body?.error || '');
+  }
+}
+
+async function loadMias() {
+  try {
+    const r = await api('/api/v1/inscripciones?periodo_id=' + PERIODO_ID);
+    inscripcionesIds = new Set(r.data.map(i => i.materia_id));
+    if (!r.data.length) {
+      document.getElementById('mias-host').innerHTML =
+        '<div class="empty"><div class="empty__icon">∅</div><div class="empty__title">Sin inscripciones</div><div class="empty__desc">Inscríbete a materias desde la pestaña anterior.</div></div>';
+      return;
+    }
+    document.getElementById('mias-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Materia</th><th>Clave</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${r.data.map(i => `
+          <tr>
+            <td><strong>${i.materia?.nombre || '—'}</strong></td>
+            <td class="mono-12">${i.materia?.clave || '—'}</td>
+            <td><span class="badge badge--${({activa:'success',baja:'neutral',aprobada:'success',reprobada:'danger'})[i.estado]||'neutral'}">${i.estado}</span></td>
+            <td>${i.estado === 'activa' ?
+              `<button class="btn btn--ghost btn--sm" onclick="darBaja(${i.id})">Dar de baja</button>` : ''}</td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+    // refrescar la tab de disponibles para ocultar botones
+    loadDisponibles();
+  } catch (e) {
+    toast('Error', 'danger', e.body?.error || '');
+  }
+}
+
+async function inscribir(materiaId, btn) {
+  btn.disabled = true;
+  try {
+    await api('/api/v1/inscripciones', { method: 'POST',
+      body: JSON.stringify({ materia_id: materiaId, periodo_id: PERIODO_ID })});
+    toast('Inscripción exitosa', 'success');
+    inscripcionesIds.add(materiaId);
+    loadDisponibles();
+  } catch (e) {
+    btn.disabled = false;
+    toast('No se pudo inscribir', 'danger', e.body?.error || '');
+  }
+}
+
+async function darBaja(insId) {
+  if (!confirm('¿Dar de baja esta materia?')) return;
+  try {
+    await api(`/api/v1/inscripciones/${insId}`, { method: 'DELETE' });
+    toast('Baja registrada', 'success');
+    loadMias();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+['filtro-semestre', 'filtro-tipo'].forEach(id => {
+  document.getElementById(id).addEventListener('change', loadDisponibles);
+});
+
+// Cargar inscripciones primero para saber qué ocultar
+(async () => {
+  try {
+    const r = await api('/api/v1/inscripciones?periodo_id=' + PERIODO_ID);
+    inscripcionesIds = new Set(r.data.map(i => i.materia_id));
+  } catch (_) {}
+  loadDisponibles();
+})();
+</script>
+{% endblock %}

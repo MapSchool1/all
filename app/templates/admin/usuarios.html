@@ -1,0 +1,165 @@
+{% extends 'admin/_admin_base.html' %}
+{% from 'components/_macros.html' import role_tag, status_badge, avatar, empty_state %}
+{% block title %}Usuarios · Panel{% endblock %}
+
+{% block admin_content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="d-32" style="margin:0;">{% if rol_filtro == 'estudiante' %}Estudiantes{% elif rol_filtro == 'profesor' %}Profesores{% else %}Usuarios{% endif %}</h1>
+  <button class="btn btn--primary" data-dialog-open="dlg-user">+ Nuevo</button>
+</div>
+
+<div class="flex gap-3 mb-4" style="flex-wrap: wrap;">
+  <input class="input" id="search" placeholder="Buscar nombre, email o expediente…" style="max-width: 320px;" />
+  <select class="select" id="filtro-rol" style="max-width: 200px;">
+    <option value="">Todos los roles</option>
+    {% for r in ['rector','director','coordinador','profesor','admin','estudiante','aspirante','invitado'] %}
+      <option value="{{ r }}" {% if rol_filtro == r %}selected{% endif %}>{{ r }}</option>
+    {% endfor %}
+  </select>
+  <select class="select" id="filtro-estado" style="max-width: 200px;">
+    <option value="">Todos los estados</option>
+    <option value="activo">Activos</option>
+    <option value="suspendido">Suspendidos</option>
+    <option value="inactivo">Inactivos</option>
+  </select>
+</div>
+
+<div id="users-host">
+  <p class="text-muted">Cargando…</p>
+</div>
+
+<div class="dialog-backdrop" id="dlg-user">
+  <div class="dialog">
+    <div class="dialog__header">
+      <span class="dialog__title">Nuevo usuario</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog__body">
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Nombre</label><input class="input" id="u-nombre" /></div>
+        <div class="field"><label class="field__label">Apellido P.</label><input class="input" id="u-apellido_p" /></div>
+      </div>
+      <div class="field"><label class="field__label">Email</label><input class="input" type="email" id="u-email" /></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Rol</label>
+          <select class="select" id="u-rol">
+            {% for r in ['estudiante','profesor','coordinador','director','admin','invitado'] %}
+              <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label class="field__label">Contraseña temporal</label>
+          <input class="input" type="text" id="u-pwd" value="Cambiar123!" />
+        </div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="u-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROL_FILTRO = {{ ('"'+rol_filtro+'"') if rol_filtro else 'null' }};
+let page = 1;
+
+async function loadUsers() {
+  const params = new URLSearchParams();
+  const search = document.getElementById('search').value;
+  const rol = document.getElementById('filtro-rol').value;
+  const estado = document.getElementById('filtro-estado').value;
+  if (search) params.set('search', search);
+  if (rol) params.set('rol', rol);
+  if (estado) params.set('estado', estado);
+  params.set('page', page);
+  params.set('per_page', 25);
+  try {
+    const r = await api('/api/v1/users?' + params);
+    const wrap = document.getElementById('users-host');
+    if (!r.data.length) {
+      wrap.innerHTML = '<div class="empty"><div class="empty__icon">∅</div><div class="empty__title">Sin resultados</div></div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="data-table">
+        <thead><tr>
+          <th></th><th>Usuario</th><th>Email</th><th>Expediente</th>
+          <th>Rol</th><th>Estado</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${r.data.map(u => `
+            <tr data-uid="${u.id}">
+              <td><span class="avatar avatar--sm" style="background: ${u.avatar_color || '#172846'};">${u.iniciales}</span></td>
+              <td><strong>${u.nombre_completo}</strong></td>
+              <td class="b-12 text-muted">${u.email}</td>
+              <td class="mono-12">${u.expediente || '—'}</td>
+              <td><span class="role-tag role-tag--${u.rol}">${u.rol}</span></td>
+              <td><span class="badge badge--${({activo:'success',suspendido:'warning',inactivo:'neutral',eliminado:'danger'}[u.estado])||'neutral'}">${u.estado}</span></td>
+              <td>
+                <div class="dropdown" data-dropdown>
+                  <button class="btn btn--ghost btn--sm" data-dropdown-trigger>⋮</button>
+                  <div class="dropdown__menu">
+                    <button class="dropdown__item" onclick="suspender(${u.id})">Suspender</button>
+                    <button class="dropdown__item" onclick="restablecer(${u.id})">Restablecer</button>
+                    <div class="dropdown__divider"></div>
+                    <button class="dropdown__item dropdown__item--danger" onclick="eliminar(${u.id})">Eliminar</button>
+                  </div>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="flex items-center justify-between mt-4">
+        <span class="b-12 text-muted">Mostrando ${(r.page-1)*r.per_page+1}–${Math.min(r.page*r.per_page, r.total)} de ${r.total}</span>
+        <div class="pagination">
+          <button class="pagination__btn" ${r.page<=1?'disabled':''} onclick="page--; loadUsers()">‹</button>
+          <span class="pagination__btn active">${r.page}</span>
+          <button class="pagination__btn" ${r.page>=r.pages?'disabled':''} onclick="page++; loadUsers()">›</button>
+        </div>
+      </div>`;
+  } catch (e) { toast('No se pudieron cargar', 'danger', e.body?.error || ''); }
+}
+
+async function suspender(id) {
+  if (!confirm('¿Suspender usuario?')) return;
+  try { await api(`/api/v1/users/${id}/suspender`, { method: 'POST', body: JSON.stringify({motivo: 'Vía panel'}) }); toast('Suspendido', 'success'); loadUsers(); }
+  catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+async function restablecer(id) {
+  try { await api(`/api/v1/users/${id}/restablecer`, { method: 'POST' }); toast('Restablecido', 'success'); loadUsers(); }
+  catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+async function eliminar(id) {
+  if (!confirm('¿Eliminar usuario? Esta acción es soft-delete pero no aparecerá en listados.')) return;
+  try { await api(`/api/v1/users/${id}`, { method: 'DELETE' }); toast('Eliminado', 'success'); loadUsers(); }
+  catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+document.getElementById('u-save').addEventListener('click', async () => {
+  const body = {
+    nombre: document.getElementById('u-nombre').value,
+    apellido_p: document.getElementById('u-apellido_p').value,
+    email: document.getElementById('u-email').value,
+    rol: document.getElementById('u-rol').value,
+    password_temporal: document.getElementById('u-pwd').value,
+  };
+  try {
+    await api('/api/v1/users', { method: 'POST', body: JSON.stringify(body) });
+    toast('Usuario creado', 'success');
+    document.getElementById('dlg-user').classList.remove('open');
+    loadUsers();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+['search', 'filtro-rol', 'filtro-estado'].forEach(id => {
+  let timer;
+  document.getElementById(id).addEventListener('input', () => {
+    clearTimeout(timer); timer = setTimeout(() => { page = 1; loadUsers(); }, 250);
+  });
+});
+
+if (ROL_FILTRO) document.getElementById('filtro-rol').value = ROL_FILTRO;
+loadUsers();
+</script>
+{% endblock %}

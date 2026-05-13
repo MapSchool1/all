@@ -1,0 +1,97 @@
+{% from 'components/_macros.html' import avatar %}
+<nav class="navbar" aria-label="Principal">
+  <div class="navbar__inner">
+    <a class="navbar__brand" href="{{ url_for('web_public.landing') }}">Matute Guide</a>
+
+    {% if current_user %}
+      {% if current_user.rol == 'estudiante' %}
+        <div class="navbar__nav">
+          <a href="{{ url_for('web_student.dashboard') }}"
+             class="navbar__link {% if request.path == url_for('web_student.dashboard') %}active{% endif %}">Inicio</a>
+          <a href="{{ url_for('web_student.horario_constructor') }}"
+             class="navbar__link {% if request.path.startswith('/horario') %}active{% endif %}">Mi horario</a>
+          <a href="{{ url_for('web_student.inscripciones') }}"
+             class="navbar__link {% if request.path == url_for('web_student.inscripciones') %}active{% endif %}">Inscripciones</a>
+          <a href="{{ url_for('web_public.salones') }}" class="navbar__link">Salones</a>
+          <a href="{{ url_for('web_public.mapa') }}" class="navbar__link">Mapa</a>
+          <a href="{{ url_for('web_student.tramites') }}" class="navbar__link">Trámites</a>
+        </div>
+      {% elif current_user.rol == 'profesor' %}
+        <div class="navbar__nav">
+          <a href="{{ url_for('web_profesor.profesor_dashboard') }}" class="navbar__link">Inicio</a>
+          <a href="{{ url_for('web_profesor.profesor_horario') }}" class="navbar__link">Mi horario</a>
+          <a href="{{ url_for('web_public.salones') }}" class="navbar__link">Salones</a>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="navbar__nav">
+        <a href="{{ url_for('web_public.oferta') }}" class="navbar__link">Oferta académica</a>
+        <a href="{{ url_for('web_public.salones') }}" class="navbar__link">Salones</a>
+        <a href="{{ url_for('web_public.mapa') }}" class="navbar__link">Mapa</a>
+      </div>
+    {% endif %}
+
+    <div class="navbar__right">
+      {% if current_user %}
+        <button class="btn btn--ghost btn--sm" id="bell-btn" data-bell
+                aria-label="Notificaciones · abrir panel"
+                aria-haspopup="true" aria-controls="notif-panel"
+                aria-expanded="false"
+                style="color: var(--surface-0); position: relative;">
+          <span aria-hidden="true">🔔</span>
+          <span id="bell-badge" class="badge badge--danger"
+                aria-live="polite" aria-atomic="true"
+                style="position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; display: none; font-size: 10px;">0</span>
+        </button>
+        <div class="dropdown" data-dropdown>
+          <button class="chip chip--avatar" data-dropdown-trigger
+                  aria-label="Menú de cuenta de {{ current_user.nombre_completo }}"
+                  aria-haspopup="menu" aria-expanded="false"
+                  style="background: rgba(255,255,255,0.1); color: var(--surface-0); border: none; cursor: pointer;">
+            {{ avatar(current_user, size='sm') }}
+            <span style="margin-right: var(--s-2);">{{ current_user.nombre }}</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="dropdown__menu">
+            {% if current_user.rol == 'estudiante' %}
+              <a href="{{ url_for('web_student.perfil') }}" class="dropdown__item">Mi perfil</a>
+              <a href="{{ url_for('web_student.horario_constructor') }}" class="dropdown__item">Mi horario</a>
+            {% elif current_user.rol in ('admin', 'director', 'coordinador', 'rector') %}
+              <a href="{{ url_for('web_admin.admin_dashboard') }}" class="dropdown__item">Panel administrativo</a>
+            {% elif current_user.rol == 'profesor' %}
+              <a href="{{ url_for('web_profesor.profesor_dashboard') }}" class="dropdown__item">Panel profesor</a>
+            {% endif %}
+            <div class="dropdown__divider"></div>
+            <a href="{{ url_for('web_auth.logout') }}" class="dropdown__item dropdown__item--danger">Cerrar sesión</a>
+          </div>
+        </div>
+      {% else %}
+        <a href="{{ url_for('web_auth.login') }}" class="btn btn--soft btn--sm">Iniciar sesión</a>
+        <a href="{{ url_for('web_auth.register') }}" class="btn btn--primary btn--sm">Crear cuenta</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+{% if current_user %}
+<aside class="side-panel" id="notif-panel"
+       role="dialog" aria-label="Panel de notificaciones"
+       aria-hidden="true">
+  <div class="side-panel__header">
+    <h2 class="side-panel__title" style="margin:0;">Notificaciones</h2>
+    <div style="display:flex; gap: var(--s-2);">
+      <button class="btn btn--ghost btn--sm" data-action="mark-all-read">Marcar todas</button>
+      <button class="btn btn--ghost btn--sm" data-action="close-notif-panel"
+              aria-label="Cerrar panel de notificaciones">
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
+  </div>
+  <div class="side-panel__body" id="notif-list">
+    <div class="empty"><div class="empty__icon" aria-hidden="true">🔔</div>
+      <div class="empty__title">Sin notificaciones</div>
+      <div class="empty__desc">Cuando recibas una novedad aparecerá aquí.</div>
+    </div>
+  </div>
+</aside>
+{% endif %}

@@ -1,0 +1,102 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import status_badge %}
+{% block title %}{{ tramite.folio }} · Trámite{% endblock %}
+
+{% block content %}
+<div class="container section" style="max-width: 800px;">
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('web_student.tramites') }}">Trámites</a>
+    <span class="breadcrumbs__sep">/</span>
+    <span>{{ tramite.folio }}</span>
+  </nav>
+
+  <div class="flex items-center gap-3 mb-2" style="flex-wrap: wrap;">
+    <h1 class="d-32" style="margin: 0;">{{ tramite.folio }}</h1>
+    {{ status_badge(tramite.estado) }}
+  </div>
+  <p class="b-16 text-muted mb-6">
+    {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '—' }}
+  </p>
+
+  <div class="card mb-6">
+    <h2 class="d-20 mb-3">Detalle</h2>
+    <div class="grid grid-2">
+      <div>
+        <div class="b-12 text-soft mono-12 mb-1">SOLICITANTE</div>
+        <div>{{ tramite.solicitante.nombre_completo }}</div>
+        <div class="b-12 text-muted">{{ tramite.solicitante.email }}</div>
+      </div>
+      <div>
+        <div class="b-12 text-soft mono-12 mb-1">SOLICITADO</div>
+        <div>{{ tramite.created_at.strftime('%d %b %Y · %H:%M') }}</div>
+      </div>
+      {% if tramite.tipo_tramite %}
+        <div>
+          <div class="b-12 text-soft mono-12 mb-1">TIEMPO ESTIMADO</div>
+          <div>{{ tramite.tipo_tramite.tiempo_estimado_dias }} días hábiles</div>
+        </div>
+        <div>
+          <div class="b-12 text-soft mono-12 mb-1">COSTO</div>
+          <div>{% if tramite.tipo_tramite.costo and tramite.tipo_tramite.costo > 0 %}
+            ${{ '%.2f'|format(tramite.tipo_tramite.costo) }}
+          {% else %}Sin costo{% endif %}</div>
+        </div>
+      {% endif %}
+    </div>
+    {% if tramite.descripcion %}
+      <div class="divider"></div>
+      <div class="b-12 text-soft mono-12 mb-1">MOTIVO</div>
+      <div class="b-14">{{ tramite.descripcion }}</div>
+    {% endif %}
+    {% if tramite.notas_admin %}
+      <div class="divider"></div>
+      <div class="b-12 text-soft mono-12 mb-1">NOTAS DE ADMINISTRACIÓN</div>
+      <div class="b-14">{{ tramite.notas_admin }}</div>
+    {% endif %}
+    {% if tramite.resultado_url %}
+      <div class="divider"></div>
+      <a class="btn btn--primary" href="{{ tramite.resultado_url }}" target="_blank">
+        Descargar documento
+      </a>
+    {% endif %}
+  </div>
+
+  <h2 class="d-20 mb-3">Seguimiento</h2>
+  {% if seguimiento %}
+    <div class="card">
+      <ol style="list-style: none; padding: 0; margin: 0; position: relative;">
+        {% for s in seguimiento %}
+          <li style="padding: var(--s-3) 0 var(--s-3) var(--s-8); position: relative;
+                     border-left: 2px solid var(--line-200); margin-left: 8px;">
+            <span style="position: absolute; left: -10px; top: 16px;
+                         width: 18px; height: 18px; border-radius: 50%;
+                         background: {% if loop.last %}var(--navy-800){% else %}var(--surface-150){% endif %};
+                         border: 2px solid {% if loop.last %}var(--navy-800){% else %}var(--line-300){% endif %};
+                         display: inline-block;"></span>
+            <div class="flex items-center gap-2 mb-1">
+              {{ status_badge(s.estado_nuevo) }}
+              <span class="b-12 text-soft">
+                {{ s.created_at.strftime('%d %b %Y · %H:%M') }}
+              </span>
+            </div>
+            {% if s.comentario %}
+              <div class="b-14 mb-1">{{ s.comentario }}</div>
+            {% endif %}
+            {% if s.usuario %}
+              <div class="b-12 text-muted">por {{ s.usuario.nombre_completo }}</div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  {% else %}
+    <p class="text-muted b-14">Sin movimientos registrados.</p>
+  {% endif %}
+
+  <div class="mt-6">
+    <a class="btn btn--ghost" href="{{ url_for('web_student.tramites') }}">
+      ← Volver a la lista
+    </a>
+  </div>
+</div>
+{% endblock %}

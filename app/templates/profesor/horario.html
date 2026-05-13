@@ -1,0 +1,14 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import schedule_grid, empty_state %}
+{% block title %}Mi horario · Profesor{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <h1 class="d-32 mb-4">Mi horario {% if periodo %}<small class="b-14 text-muted">· {{ periodo.clave }}</small>{% endif %}</h1>
+  {% if bloques %}
+    {{ schedule_grid(bloques) }}
+  {% else %}
+    {{ empty_state('Sin clases asignadas', 'Cuando te asignen bloques aparecerán aquí.', icon='📅') }}
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends '_base.html' %}
+{% block title %}Mapa del campus · Matute Guide{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <h1 class="d-32 mb-2">Mapa del campus</h1>
+  <p class="b-16 text-muted mb-6">Click en un edificio para ver sus salones; o usa la búsqueda.</p>
+
+  <div class="grid" style="grid-template-columns: 280px 1fr; gap: var(--s-6);">
+    <aside>
+      <input class="input mb-4" id="map-search" placeholder="Buscar salón o edificio…" />
+      <div class="card mb-4">
+        <div class="b-12 mono-12 text-soft mb-2">FILTROS</div>
+        <label class="checkbox mb-2"><input type="checkbox" data-poi-filter="edificio" checked /> Edificios</label>
+        <label class="checkbox mb-2"><input type="checkbox" data-poi-filter="cafeteria" checked /> Cafeterías</label>
+        <label class="checkbox mb-2"><input type="checkbox" data-poi-filter="biblioteca" checked /> Biblioteca</label>
+        <label class="checkbox mb-2"><input type="checkbox" data-poi-filter="enfermeria" checked /> Enfermería</label>
+        <label class="checkbox mb-2"><input type="checkbox" data-poi-filter="estacionamiento" checked /> Estacionamiento</label>
+        <label class="checkbox mb-2"><input type="checkbox" data-poi-filter="canchas" checked /> Canchas</label>
+        <label class="checkbox"><input type="checkbox" data-poi-filter="bano" checked /> Sanitarios</label>
+      </div>
+
+      <div class="card">
+        <div class="b-12 mono-12 text-soft mb-2">¿CÓMO LLEGAR?</div>
+        <div class="field">
+          <label class="field__label">Origen</label>
+          <select class="select" id="ruta-origen">
+            <option value="">Selecciona…</option>
+            {% for e in edificios %}
+              <option value="edif-{{ e.id }}">Edif. {{ e.clave }}</option>
+            {% endfor %}
+            {% for p in puntos %}
+              <option value="poi-{{ p.id }}">{{ p.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label">Destino</label>
+          <select class="select" id="ruta-destino">
+            <option value="">Selecciona…</option>
+            {% for e in edificios %}
+              <option value="edif-{{ e.id }}">Edif. {{ e.clave }}</option>
+            {% endfor %}
+            {% for p in puntos %}
+              <option value="poi-{{ p.id }}">{{ p.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn--primary btn--block btn--sm" id="btn-ruta">Calcular ruta</button>
+        <div id="ruta-pasos" class="mt-3"></div>
+      </div>
+    </aside>
+
+    <div class="map-stage">
+      <svg id="campus-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto;">
+        <rect width="1200" height="800" fill="var(--surface-100)" />
+        {# Edificios #}
+        {% for e in edificios %}
+          <g class="map-edificio" tabindex="0" role="button" aria-label="{{ e.nombre }}"
+             data-id="{{ e.id }}" data-clave="{{ e.clave }}"
+             data-x="{{ e.coordenadas_x }}" data-y="{{ e.coordenadas_y }}">
+            <rect x="{{ e.coordenadas_x }}" y="{{ e.coordenadas_y }}"
+                  width="{{ e.ancho_mapa }}" height="{{ e.alto_mapa }}"
+                  fill="{{ e.color_mapa }}" rx="6" />
+            <text x="{{ e.coordenadas_x + e.ancho_mapa / 2 }}"
+                  y="{{ e.coordenadas_y + e.alto_mapa / 2 + 10 }}"
+                  text-anchor="middle" fill="white"
+                  font-family="Lexend" font-size="36" font-weight="800">
+              {{ e.clave }}
+            </text>
+          </g>
+        {% endfor %}
+        {# Puntos de interés #}
+        {% for p in puntos %}
+          <g class="map-poi" tabindex="0" role="button" aria-label="{{ p.nombre }}"
+             data-id="{{ p.id }}" data-tipo="{{ p.tipo }}">
+            <circle cx="{{ p.coord_x }}" cy="{{ p.coord_y }}" r="14"
+                    fill="{% if p.tipo == 'cafeteria' %}var(--success){% elif p.tipo == 'biblioteca' %}var(--info){% elif p.tipo == 'enfermeria' %}var(--danger){% elif p.tipo == 'estacionamiento' %}var(--warning){% else %}var(--ink-600){% endif %}" />
+            <text x="{{ p.coord_x }}" y="{{ p.coord_y + 4 }}"
+                  text-anchor="middle" fill="white" font-size="12" font-weight="700">
+              {% if p.tipo == 'cafeteria' %}☕{% elif p.tipo == 'biblioteca' %}📚{% elif p.tipo == 'enfermeria' %}+{% elif p.tipo == 'estacionamiento' %}🅿️{% elif p.tipo == 'canchas' %}⚽{% else %}·{% endif %}
+            </text>
+          </g>
+        {% endfor %}
+      </svg>
+    </div>
+  </div>
+</div>
+
+<aside class="side-panel" id="map-panel">
+  <div class="side-panel__header">
+    <span class="side-panel__title" id="map-panel-title">—</span>
+    <button class="btn btn--ghost btn--sm" id="map-panel-close">×</button>
+  </div>
+  <div class="side-panel__body" id="map-panel-body"></div>
+</aside>
+
+<script>
+document.querySelectorAll('.map-edificio').forEach(g => {
+  g.addEventListener('click', async () => {
+    const id = g.dataset.id;
+    const r = await fetch(`/api/v1/edificios/${id}`).then(r => r.json());
+    document.getElementById('map-panel-title').textContent = r.edificio.nombre;
+    document.getElementById('map-panel-body').innerHTML = `
+      <p class="b-14 text-muted">${r.edificio.descripcion || ''}</p>
+      <h4 class="d-20 mt-4 mb-3">Salones (${r.salones.length})</h4>
+      <div class="stack">
+        ${r.salones.map(s => `
+          <a class="salon-card" href="/salones/${s.codigo}" style="display:block;">
+            <div class="salon-card__head">
+              <div>
+                <div class="salon-card__codigo" style="font-size: 16px;">${s.codigo}</div>
+                <div class="salon-card__nombre">${s.nombre || ''}</div>
+              </div>
+            </div>
+          </a>`).join('') || '<p class="text-muted">Sin salones registrados.</p>'}
+      </div>`;
+    document.getElementById('map-panel').classList.add('open');
+  });
+});
+document.querySelectorAll('.map-poi').forEach(g => {
+  g.addEventListener('click', () => {
+    const tipo = g.dataset.tipo;
+    document.getElementById('map-panel-title').textContent = tipo.replace('_', ' ');
+    document.getElementById('map-panel-body').innerHTML = `<p>Punto de interés: <strong>${tipo}</strong></p>`;
+    document.getElementById('map-panel').classList.add('open');
+  });
+});
+document.getElementById('map-panel-close').addEventListener('click', () => {
+  document.getElementById('map-panel').classList.remove('open');
+});
+document.querySelectorAll('[data-poi-filter]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const tipo = cb.dataset.poiFilter;
+    document.querySelectorAll(`.map-poi[data-tipo="${tipo}"]`).forEach(p => {
+      p.style.display = cb.checked ? '' : 'none';
+    });
+  });
+});
+document.getElementById('btn-ruta').addEventListener('click', async () => {
+  const origen = document.getElementById('ruta-origen').value;
+  const destino = document.getElementById('ruta-destino').value;
+  if (!origen || !destino) {
+    return toast('Selecciona origen y destino', 'warning');
+  }
+  if (origen === destino) {
+    return toast('Origen y destino son iguales', 'warning');
+  }
+  try {
+    const r = await fetch(`/api/v1/mapa/ruta?origen=${origen}&destino=${destino}`)
+      .then(r => r.json());
+    document.getElementById('ruta-pasos').innerHTML = `
+      <div class="card mt-2">
+        <div class="b-12 mono-12 text-soft mb-2">PASOS · ~${r.tiempo_estimado_min} min</div>
+        <ol style="margin: 0; padding-left: 20px;">
+          ${r.pasos.map(p => `<li class="b-14 mb-1">${p}</li>`).join('')}
+        </ol>
+      </div>`;
+  } catch (e) {
+    toast('No se pudo calcular ruta', 'danger');
+  }
+});
+
+document.getElementById('map-search').addEventListener('input', async (e) => {
+  const q = e.target.value.trim();
+  if (q.length < 2) return;
+  try {
+    const r = await fetch('/api/v1/mapa/buscar?q=' + encodeURIComponent(q),
+                          { headers: TokenStore.access ? {'Authorization': 'Bearer '+TokenStore.access} : {} });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.salones && data.salones.length) {
+      window.location.href = '/salones/' + data.salones[0].codigo;
+    } else if (data.edificios && data.edificios.length) {
+      const ed = document.querySelector(`.map-edificio[data-clave="${data.edificios[0].clave}"]`);
+      if (ed) ed.dispatchEvent(new Event('click'));
+    }
+  } catch (_) {}
+});
+</script>
+{% endblock %}

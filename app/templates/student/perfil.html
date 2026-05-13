@@ -1,0 +1,81 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import avatar, alert %}
+{% block title %}Mi perfil{% endblock %}
+
+{% block content %}
+<div class="container section" style="max-width: 720px;">
+  <div class="flex items-center gap-4 mb-6">
+    {{ avatar(user, size='xl') }}
+    <div>
+      <h1 class="d-24" style="margin:0;">{{ user.nombre_completo }}</h1>
+      <span class="text-muted">{{ user.email }}</span>
+      <div class="mt-2">{% from 'components/_macros.html' import role_tag %}{{ role_tag(user.rol) }}</div>
+    </div>
+  </div>
+
+  <h2 class="d-20 mb-3">Información personal</h2>
+  <form id="perfil-form" novalidate>
+    <div class="grid grid-2">
+      <div class="field">
+        <label class="field__label">Nombre</label>
+        <input class="input" id="nombre" value="{{ user.nombre }}" required data-validate="required" />
+      </div>
+      <div class="field">
+        <label class="field__label">Teléfono</label>
+        <input class="input" id="telefono" value="{{ user.telefono or '' }}" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field__label">Color del avatar</label>
+      <input type="color" id="avatar_color" value="{{ user.avatar_color }}" />
+    </div>
+    <button type="submit" class="btn btn--primary">Guardar cambios</button>
+  </form>
+
+  <div class="divider"></div>
+
+  <h2 class="d-20 mb-3">Seguridad</h2>
+  <form id="pwd-form">
+    <div class="field">
+      <label class="field__label">Contraseña actual</label>
+      <input class="input" type="password" id="actual" required data-validate="required" />
+    </div>
+    <div class="field">
+      <label class="field__label">Nueva contraseña</label>
+      <input class="input" type="password" id="nueva" required data-validate="required min8" />
+      <div class="field__hint">Mínimo 8 caracteres con letras y números.</div>
+    </div>
+    <button type="submit" class="btn btn--soft">Cambiar contraseña</button>
+  </form>
+</div>
+
+<script>
+document.getElementById('perfil-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    nombre: document.getElementById('nombre').value,
+    telefono: document.getElementById('telefono').value,
+    avatar_color: document.getElementById('avatar_color').value,
+  };
+  try {
+    await api(`/api/v1/users/{{ user.id }}`, { method: 'PUT', body: JSON.stringify(body) });
+    toast('Perfil actualizado', 'success');
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+document.getElementById('pwd-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/auth/password/change', {
+      method: 'POST',
+      body: JSON.stringify({
+        password_actual: document.getElementById('actual').value,
+        password_nuevo: document.getElementById('nueva').value,
+      }),
+    });
+    toast('Contraseña actualizada', 'success', 'Vuelve a iniciar sesión');
+    setTimeout(() => location.href = '/auth/logout', 1500);
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+</script>
+{% endblock %}

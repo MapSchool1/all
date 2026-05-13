@@ -1,0 +1,10 @@
+{% extends '_base.html' %}
+{% block title %}Permiso denegado{% endblock %}
+{% block content %}
+<div class="container section text-center">
+  <div class="d-72" style="color: var(--ink-300);">403</div>
+  <h1 class="d-32 mt-3">No tienes permiso para ver esto</h1>
+  <p class="b-16 text-muted mt-2">Si crees que es un error, contacta a soporte.</p>
+  <a class="btn btn--primary mt-6" href="{{ url_for('web_public.landing') }}">Volver al inicio</a>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Salones · Panel{% endblock %}
+
+{% block admin_content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="d-32" style="margin:0;">Salones</h1>
+  <button class="btn btn--primary" data-dialog-open="dlg-salon">+ Nuevo salón</button>
+</div>
+
+<div class="flex gap-3 mb-4" style="flex-wrap: wrap;">
+  <input class="input" id="search" placeholder="Buscar código…" style="max-width: 280px;" />
+  <select class="select" id="filtro-tipo" style="max-width: 180px;">
+    <option value="">Todos los tipos</option>
+    <option value="aula">Aula</option>
+    <option value="laboratorio">Laboratorio</option>
+    <option value="auditorio">Auditorio</option>
+    <option value="sala_computo">Sala de cómputo</option>
+    <option value="sala_idiomas">Sala de idiomas</option>
+  </select>
+</div>
+
+<div id="salones-host"><p class="text-muted">Cargando…</p></div>
+
+<div class="dialog-backdrop" id="dlg-salon">
+  <div class="dialog">
+    <div class="dialog__header">
+      <span class="dialog__title">Nuevo salón</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog__body">
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Código</label><input class="input" id="s-codigo" /></div>
+        <div class="field"><label class="field__label">Edificio</label>
+          <select class="select" id="s-edificio">
+            {% for e in edificios %}<option value="{{ e.id }}">{{ e.clave }} · {{ e.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label class="field__label">Nombre</label><input class="input" id="s-nombre" /></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Tipo</label>
+          <select class="select" id="s-tipo">
+            <option value="aula">Aula</option>
+            <option value="laboratorio">Laboratorio</option>
+            <option value="auditorio">Auditorio</option>
+            <option value="sala_computo">Sala de cómputo</option>
+            <option value="sala_idiomas">Sala de idiomas</option>
+          </select>
+        </div>
+        <div class="field"><label class="field__label">Capacidad</label><input class="input" type="number" id="s-cap" value="30" /></div>
+      </div>
+      <div class="field"><label class="field__label">Piso</label><input class="input" type="number" id="s-piso" value="1" /></div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="s-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadSalones() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const tipo = document.getElementById('filtro-tipo').value;
+  try {
+    const r = await fetch('/api/v1/salones').then(r => r.json());
+    let data = r.data;
+    if (tipo) data = data.filter(s => s.tipo === tipo);
+    if (search) data = data.filter(s => s.codigo.toLowerCase().includes(search));
+    if (!data.length) {
+      document.getElementById('salones-host').innerHTML =
+        '<div class="empty"><div class="empty__icon">∅</div><div class="empty__title">Sin resultados</div></div>';
+      return;
+    }
+    const grouped = {};
+    data.forEach(s => {
+      const k = s.edificio?.clave || '?';
+      grouped[k] = grouped[k] || [];
+      grouped[k].push(s);
+    });
+    let html = '';
+    Object.keys(grouped).sort().forEach(k => {
+      html += `<h3 class="d-20 mt-6 mb-3">Edificio ${k} (${grouped[k].length})</h3><div class="grid grid-4">`;
+      grouped[k].forEach(s => {
+        html += `<div class="salon-card">
+          <div class="salon-card__head">
+            <div><div class="salon-card__codigo">${s.codigo}</div>
+              <div class="salon-card__nombre">${s.nombre || ''}</div></div>
+            <span class="dot ${s.disponible_ahora ? 'dot--success' : 'dot--warning'}"></span>
+          </div>
+          <div class="salon-card__meta">
+            <span class="badge badge--navy">${s.tipo.replace('_',' ')}</span>
+            <span>· ${s.capacidad}</span>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    });
+    document.getElementById('salones-host').innerHTML = html;
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+document.getElementById('s-save').addEventListener('click', async () => {
+  const body = {
+    codigo: document.getElementById('s-codigo').value,
+    nombre: document.getElementById('s-nombre').value,
+    edificio_id: parseInt(document.getElementById('s-edificio').value),
+    tipo: document.getElementById('s-tipo').value,
+    capacidad: parseInt(document.getElementById('s-cap').value),
+    piso: parseInt(document.getElementById('s-piso').value),
+  };
+  try {
+    await api('/api/v1/salones', { method: 'POST', body: JSON.stringify(body) });
+    toast('Salón creado', 'success');
+    document.getElementById('dlg-salon').classList.remove('open');
+    loadSalones();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+['search', 'filtro-tipo'].forEach(id => {
+  let timer;
+  document.getElementById(id).addEventListener('input', () => {
+    clearTimeout(timer); timer = setTimeout(loadSalones, 200);
+  });
+});
+loadSalones();
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Plantillas de horario · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Plantillas de horario</h1>
+<p class="b-16 text-muted mb-6">
+  Plantillas sugeridas que los estudiantes pueden aplicar como base de su horario.
+</p>
+
+<div class="flex items-center justify-between mb-4">
+  <div class="flex gap-3">
+    <select class="select" id="filtro-carrera" style="max-width: 280px;">
+      <option value="">Todas las carreras</option>
+      {% for c in carreras %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="btn btn--primary" data-dialog-open="dlg-pl">+ Nueva plantilla</button>
+</div>
+
+<div id="pl-host"><p class="text-muted">Cargando…</p></div>
+
+<div class="dialog-backdrop" id="dlg-pl">
+  <div class="dialog dialog--lg">
+    <div class="dialog__header"><span class="dialog__title">Nueva plantilla</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button></div>
+    <div class="dialog__body">
+      <div class="field"><label class="field__label">Nombre</label><input class="input" id="pl-nombre" /></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Carrera</label>
+          <select class="select" id="pl-carrera">
+            {% for c in carreras %}<option value="{{ c.id }}">{{ c.nombre_corto or c.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field"><label class="field__label">Semestre</label>
+          <select class="select" id="pl-sem">
+            {% for s in range(1, 9) %}<option value="{{ s }}">Sem {{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label class="field__label">Bloques (JSON, opcional)</label>
+        <textarea class="textarea" id="pl-bloques" style="font-family: var(--font-mono); font-size: 12px;"
+                  placeholder='[{"materia_id": 1, "dia": "lun", "hora_inicio": "07:00", "hora_fin": "09:00"}]'></textarea>
+        <div class="field__hint">Lista de objetos con materia_id, dia (lun/mar/...), hora_inicio, hora_fin.</div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="pl-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function load() {
+  const carrera = document.getElementById('filtro-carrera').value;
+  const params = new URLSearchParams();
+  if (carrera) params.set('carrera_id', carrera);
+  try {
+    const r = await api('/api/v1/horarios/plantillas?' + params);
+    if (!r.data.length) {
+      document.getElementById('pl-host').innerHTML = '<div class="empty"><div class="empty__icon">📋</div><div class="empty__title">Sin plantillas</div></div>';
+      return;
+    }
+    document.getElementById('pl-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Carrera</th><th>Semestre</th><th>Bloques</th><th>Activa</th></tr></thead>
+        <tbody>${r.data.map(p => `
+          <tr>
+            <td><strong>${p.nombre || '—'}</strong></td>
+            <td class="b-12 text-muted">${p.carrera_id}</td>
+            <td>${p.semestre}</td>
+            <td>${p.bloques?.length || 0}</td>
+            <td>${p.activa ? '<span class="badge badge--success">Sí</span>' : '<span class="badge badge--neutral">No</span>'}</td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+  } catch (_) { toast('Error', 'danger'); }
+}
+
+document.getElementById('pl-save').addEventListener('click', async () => {
+  let bloques = [];
+  try {
+    const txt = document.getElementById('pl-bloques').value.trim();
+    if (txt) bloques = JSON.parse(txt);
+  } catch (e) {
+    return toast('JSON inválido', 'danger', e.message);
+  }
+  const body = {
+    nombre: document.getElementById('pl-nombre').value,
+    carrera_id: parseInt(document.getElementById('pl-carrera').value),
+    semestre: parseInt(document.getElementById('pl-sem').value),
+    bloques,
+  };
+  try {
+    await api('/api/v1/horarios/plantillas', { method: 'POST', body: JSON.stringify(body) });
+    toast('Plantilla creada', 'success');
+    document.getElementById('dlg-pl').classList.remove('open');
+    load();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+document.getElementById('filtro-carrera').addEventListener('change', load);
+load();
+</script>
+{% endblock %}

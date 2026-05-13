@@ -1,0 +1,198 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import schedule_grid, empty_state, status_badge, button %}
+{% block title %}Mi horario{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <div class="flex items-center justify-between mb-4" style="flex-wrap: wrap; gap: var(--s-3);">
+    <div>
+      <h1 class="d-32 mb-2" style="margin:0;">Mi horario</h1>
+      {% if periodo %}<span class="b-14 text-muted">Periodo {{ periodo.clave }} · {{ periodo.nombre }}</span>{% endif %}
+    </div>
+    {% if horario %}
+      <div class="flex items-center gap-3">
+        {{ status_badge(horario.estado) }}
+        {% if horario.estado == 'borrador' %}
+          <button class="btn btn--primary" id="btn-publicar">Publicar</button>
+        {% endif %}
+        <button class="btn btn--soft" id="btn-add-bloque" data-dialog-open="dlg-add-bloque">+ Agregar materia</button>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if not horario %}
+    {{ empty_state('No tienes un horario para este periodo',
+        'Crea uno para empezar a agregar bloques.', icon='📅',
+        cta='Crear horario', cta_href='#') }}
+    <div class="text-center mt-4">
+      <button class="btn btn--primary btn--lg" id="crear-horario">Crear mi horario</button>
+    </div>
+  {% else %}
+    <div id="schedule-host">
+      <p class="text-muted">Cargando horario…</p>
+    </div>
+  {% endif %}
+</div>
+
+{% if horario %}
+<div class="dialog-backdrop" id="dlg-add-bloque">
+  <div class="dialog">
+    <div class="dialog__header">
+      <span class="dialog__title">Agregar materia</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog__body">
+      <div class="field">
+        <label class="field__label">Materia</label>
+        <select class="select" id="bloque-materia"></select>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label class="field__label">Día</label>
+          <select class="select" id="bloque-dia">
+            <option value="lun">Lunes</option><option value="mar">Martes</option>
+            <option value="mie">Miércoles</option><option value="jue">Jueves</option>
+            <option value="vie">Viernes</option><option value="sab">Sábado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label">Salón (opcional)</label>
+          <select class="select" id="bloque-salon">
+            <option value="">— Sin asignar —</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label class="field__label">Hora inicio</label>
+          <input class="input" type="time" id="bloque-hi" value="07:00" step="900" />
+        </div>
+        <div class="field">
+          <label class="field__label">Hora fin</label>
+          <input class="input" type="time" id="bloque-hf" value="09:00" step="900" />
+        </div>
+      </div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="bloque-save">Agregar</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+const HORARIO_ID = {{ horario.id if horario else 'null' }};
+
+async function loadHorario() {
+  if (!HORARIO_ID) return;
+  try {
+    const r = await api(`/api/v1/horarios/${HORARIO_ID}`);
+    renderGrid(r.bloques);
+  } catch (e) {
+    document.getElementById('schedule-host').innerHTML =
+      '<p class="text-muted">No se pudo cargar el horario.</p>';
+  }
+}
+
+function renderGrid(bloques) {
+  const dias = ['lun','mar','mie','jue','vie','sab'];
+  const lbl = {lun:'Lunes',mar:'Martes',mie:'Miércoles',jue:'Jueves',vie:'Viernes',sab:'Sábado'};
+  const tipoCls = {tronco_comun:'tronco-comun',area_profesional:'area-profesional',laboratorio:'laboratorio',idiomas:'idiomas'};
+  const horas = Array.from({length:14},(_,i)=>i+7);
+  let html = '<div class="schedule-grid">';
+  html += '<div class="schedule-grid__header">Hora</div>';
+  dias.forEach(d => html += `<div class="schedule-grid__header">${lbl[d]}</div>`);
+  horas.forEach(h => {
+    html += `<div class="schedule-grid__time">${('0'+h).slice(-2)}:00</div>`;
+    dias.forEach(d => {
+      const b = bloques.find(b => b.dia === d && parseInt(b.hora_inicio.split(':')[0]) === h);
+      if (b) {
+        const tcls = tipoCls[b.materia?.tipo] || 'tronco-comun';
+        const rows = parseInt(b.hora_fin.split(':')[0]) - h;
+        html += `<div class="schedule-grid__cell">
+          <button class="bloque bloque--${tcls}${b.conflicto?' bloque--conflicto':''}"
+            style="height: calc(90px * ${rows} - 2px); position: absolute; top: 2px; left: 2px; right: 2px; z-index: 2;"
+            data-bloque-id="${b.id}"
+            data-materia="${(b.materia?.nombre || '—').replace(/"/g,'&quot;')}"
+            data-salon="${(b.salon?.codigo || '—').replace(/"/g,'&quot;')}"
+            data-profesor="${(b.profesor?.nombre_completo || '—').replace(/"/g,'&quot;')}"
+            data-hora="${b.hora_inicio} – ${b.hora_fin}">
+            <span class="bloque__titulo">${b.materia?.nombre_corto || b.materia?.nombre || '—'}</span>
+            <span class="bloque__sub">${b.salon?.codigo || ''}</span>
+            ${b.conflicto ? '<span class="bloque__conflicto-label">⚠ Conflicto</span>' : ''}
+          </button>
+        </div>`;
+      } else {
+        html += `<div class="schedule-grid__cell"></div>`;
+      }
+    });
+  });
+  html += '</div>';
+  html += `<div class="schedule-legend mt-3">
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-tronco-comun);"></span>Tronco común</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-area-profesional);"></span>Área profesional</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-laboratorio);"></span>Laboratorio</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-idiomas);"></span>Idiomas</span>
+    <span><span class="schedule-legend__chip" style="background: var(--bloque-conflicto);"></span>Conflicto</span>
+  </div>`;
+  document.getElementById('schedule-host').innerHTML = html;
+}
+
+async function loadSelects() {
+  const matSel = document.getElementById('bloque-materia');
+  const salSel = document.getElementById('bloque-salon');
+  if (!matSel) return;
+  try {
+    const m = await api('/api/v1/materias');
+    matSel.innerHTML = '<option value="">— Selecciona —</option>' +
+      m.data.map(x => `<option value="${x.id}">${x.clave} · ${x.nombre}</option>`).join('');
+    const s = await fetch('/api/v1/salones').then(r => r.json());
+    salSel.innerHTML = '<option value="">— Sin asignar —</option>' +
+      s.data.map(x => `<option value="${x.id}">${x.codigo}</option>`).join('');
+  } catch (_) {}
+}
+
+document.getElementById('bloque-save')?.addEventListener('click', async () => {
+  const materia_id = parseInt(document.getElementById('bloque-materia').value);
+  const dia = document.getElementById('bloque-dia').value;
+  const salon_id = document.getElementById('bloque-salon').value;
+  const hi = document.getElementById('bloque-hi').value;
+  const hf = document.getElementById('bloque-hf').value;
+  if (!materia_id) return toast('Selecciona una materia', 'warning');
+  try {
+    const body = { materia_id, dia, hora_inicio: hi, hora_fin: hf };
+    if (salon_id) body.salon_id = parseInt(salon_id);
+    const r = await api(`/api/v1/horarios/${HORARIO_ID}/bloques`, {
+      method: 'POST', body: JSON.stringify(body)
+    });
+    if (r.advertencia) toast('Conflicto', 'warning', r.advertencia);
+    else toast('Bloque agregado', 'success');
+    document.getElementById('dlg-add-bloque').classList.remove('open');
+    loadHorario();
+  } catch (e) {
+    toast('No se pudo agregar', 'danger', e.body?.error || '');
+  }
+});
+
+document.getElementById('btn-publicar')?.addEventListener('click', async () => {
+  try {
+    await api(`/api/v1/horarios/${HORARIO_ID}/publicar`, { method: 'POST' });
+    toast('Horario publicado', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch (e) {
+    toast('No se pudo publicar', 'warning', e.body?.error || '');
+  }
+});
+
+document.getElementById('crear-horario')?.addEventListener('click', async () => {
+  try {
+    await api('/api/v1/horarios', { method: 'POST', body: JSON.stringify({}) });
+    location.reload();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+
+loadHorario();
+loadSelects();
+</script>
+{% endblock %}

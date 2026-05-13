@@ -1,0 +1,75 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Carreras · Panel{% endblock %}
+
+{% block admin_content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="d-32" style="margin:0;">Carreras</h1>
+  <button class="btn btn--primary" data-dialog-open="dlg-c">+ Nueva carrera</button>
+</div>
+<div id="carreras-host"><p class="text-muted">Cargando…</p></div>
+
+<div class="dialog-backdrop" id="dlg-c">
+  <div class="dialog">
+    <div class="dialog__header"><span class="dialog__title">Nueva carrera</span>
+      <button class="dialog__close" data-dialog-close aria-label="Cerrar"><span aria-hidden="true">×</span></button></div>
+    <div class="dialog__body">
+      <div class="field"><label class="field__label">Nombre</label><input class="input" id="c-nombre" /></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Nombre corto</label><input class="input" id="c-nombre-corto" /></div>
+        <div class="field"><label class="field__label">Slug</label><input class="input" id="c-slug" placeholder="tec-mi-carrera" /></div>
+      </div>
+      <div class="field"><label class="field__label">Descripción</label><textarea class="textarea" id="c-desc"></textarea></div>
+      <div class="grid grid-2">
+        <div class="field"><label class="field__label">Semestres</label><input class="input" type="number" id="c-sem" value="8" /></div>
+        <div class="field"><label class="field__label">Créditos totales</label><input class="input" type="number" id="c-cred" value="300" /></div>
+      </div>
+      <div class="field"><label class="field__label">Campos</label><input class="input" id="c-campos" placeholder="separados por coma" /></div>
+    </div>
+    <div class="dialog__footer">
+      <button class="btn btn--ghost" data-dialog-close>Cancelar</button>
+      <button class="btn btn--primary" id="c-save">Crear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function load() {
+  try {
+    const r = await fetch('/api/v1/carreras').then(r => r.json());
+    if (!r.data.length) {
+      document.getElementById('carreras-host').innerHTML = '<div class="empty"><div class="empty__title">Sin carreras</div></div>'; return;
+    }
+    document.getElementById('carreras-host').innerHTML = '<div class="grid grid-3">' + r.data.map(c => `
+      <div class="content-card">
+        <div class="content-card__title">${c.nombre}</div>
+        <div class="content-card__desc">${c.descripcion || ''}</div>
+        <div class="content-card__meta">
+          <span class="badge badge--neutral">${c.duracion_semestres} sem.</span>
+          <span class="badge badge--neutral">${c.creditos_totales} cred.</span>
+          ${c.activa ? '<span class="badge badge--success">Activa</span>' : '<span class="badge badge--neutral">Inactiva</span>'}
+        </div>
+        <a class="content-card__cta" href="/admin/carreras/${c.id}">Editar plan →</a>
+      </div>`).join('') + '</div>';
+  } catch (_) { toast('Error', 'danger'); }
+}
+
+document.getElementById('c-save').addEventListener('click', async () => {
+  const body = {
+    nombre: document.getElementById('c-nombre').value,
+    nombre_corto: document.getElementById('c-nombre-corto').value,
+    slug: document.getElementById('c-slug').value,
+    descripcion: document.getElementById('c-desc').value,
+    duracion_semestres: parseInt(document.getElementById('c-sem').value),
+    creditos_totales: parseInt(document.getElementById('c-cred').value),
+    campos: document.getElementById('c-campos').value,
+  };
+  try {
+    await api('/api/v1/carreras', { method: 'POST', body: JSON.stringify(body) });
+    toast('Carrera creada', 'success');
+    document.getElementById('dlg-c').classList.remove('open');
+    load();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+});
+load();
+</script>
+{% endblock %}

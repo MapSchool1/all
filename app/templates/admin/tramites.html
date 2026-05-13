@@ -1,0 +1,75 @@
+{% extends 'admin/_admin_base.html' %}
+{% block title %}Trámites · Panel{% endblock %}
+
+{% block admin_content %}
+<h1 class="d-32 mb-4">Trámites</h1>
+
+<div class="tabs mb-6" id="estado-tabs">
+  <button class="tabs__item active" data-estado="">Todos</button>
+  <button class="tabs__item" data-estado="recibido">Pendientes</button>
+  <button class="tabs__item" data-estado="en_proceso">En proceso</button>
+  <button class="tabs__item" data-estado="listo">Listos</button>
+  <button class="tabs__item" data-estado="entregado">Entregados</button>
+</div>
+
+<div id="tramites-host"><p class="text-muted">Cargando…</p></div>
+
+<script>
+let estadoFiltro = '';
+
+async function loadTramites() {
+  const params = new URLSearchParams();
+  if (estadoFiltro) params.set('estado', estadoFiltro);
+  params.set('per_page', 50);
+  try {
+    const r = await api('/api/v1/tramites?' + params);
+    if (!r.data.length) {
+      document.getElementById('tramites-host').innerHTML =
+        '<div class="empty"><div class="empty__icon">📋</div><div class="empty__title">Sin trámites</div></div>';
+      return;
+    }
+    document.getElementById('tramites-host').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Folio</th><th>Solicitante</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>${r.data.map(t => `
+          <tr>
+            <td><strong>${t.folio}</strong></td>
+            <td>${t.solicitante?.nombre_completo || '—'}</td>
+            <td>${t.tipo?.nombre || '—'}</td>
+            <td><span class="badge badge--${({recibido:'info',en_proceso:'info',pendiente_pago:'warning',listo:'success',entregado:'neutral',rechazado:'danger'}[t.estado])||'neutral'}">${t.estado.replace('_',' ')}</span></td>
+            <td class="b-12 text-muted">${new Date(t.created_at).toLocaleDateString('es-MX')}</td>
+            <td>
+              <div class="dropdown" data-dropdown>
+                <button class="btn btn--ghost btn--sm" data-dropdown-trigger>Cambiar ▾</button>
+                <div class="dropdown__menu">
+                  <button class="dropdown__item" onclick="cambiar(${t.id},'en_proceso')">En proceso</button>
+                  <button class="dropdown__item" onclick="cambiar(${t.id},'listo')">Listo</button>
+                  <button class="dropdown__item" onclick="cambiar(${t.id},'entregado')">Entregado</button>
+                  <button class="dropdown__item dropdown__item--danger" onclick="cambiar(${t.id},'rechazado')">Rechazado</button>
+                </div>
+              </div>
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+  } catch (e) { toast('Error', 'danger'); }
+}
+
+async function cambiar(id, estado) {
+  try {
+    await api(`/api/v1/tramites/${id}/estado`, { method: 'PUT', body: JSON.stringify({estado}) });
+    toast('Estado actualizado', 'success');
+    loadTramites();
+  } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
+}
+
+document.querySelectorAll('#estado-tabs .tabs__item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#estado-tabs .tabs__item').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    estadoFiltro = b.dataset.estado;
+    loadTramites();
+  });
+});
+loadTramites();
+</script>
+{% endblock %}

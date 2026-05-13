@@ -1,0 +1,66 @@
+{% extends '_base.html' %}
+{# Layout de admin con sidebar 240px + contenido #}
+{% block content %}
+<div class="layout-admin">
+  <aside class="sidebar">
+    <div class="sidebar__title">Panel</div>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.admin_dashboard' %}active{% endif %}" href="{{ url_for('web_admin.admin_dashboard') }}">
+      <span class="sidebar__icon">🏠</span> Inicio
+    </a>
+
+    <div class="sidebar__title">Académico</div>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.horarios' %}active{% endif %}" href="{{ url_for('web_admin.horarios') }}">
+      <span class="sidebar__icon">📅</span> Horarios
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.materias' %}active{% endif %}" href="{{ url_for('web_admin.materias') }}">
+      <span class="sidebar__icon">📚</span> Materias
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.carreras' %}active{% endif %}" href="{{ url_for('web_admin.carreras') }}">
+      <span class="sidebar__icon">🎓</span> Carreras
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.periodos' %}active{% endif %}" href="{{ url_for('web_admin.periodos') }}">
+      <span class="sidebar__icon">📆</span> Periodos
+    </a>
+
+    <div class="sidebar__title">Campus</div>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.salones' %}active{% endif %}" href="{{ url_for('web_admin.salones') }}">
+      <span class="sidebar__icon">🏢</span> Salones
+    </a>
+    <a class="sidebar__item" href="{{ url_for('web_public.mapa') }}">
+      <span class="sidebar__icon">🗺️</span> Mapa
+    </a>
+
+    <div class="sidebar__title">Comunidad</div>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.usuarios' %}active{% endif %}" href="{{ url_for('web_admin.usuarios') }}">
+      <span class="sidebar__icon">👥</span> Usuarios
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.estudiantes' %}active{% endif %}" href="{{ url_for('web_admin.estudiantes') }}">
+      <span class="sidebar__icon">🎒</span> Estudiantes
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.profesores' %}active{% endif %}" href="{{ url_for('web_admin.profesores') }}">
+      <span class="sidebar__icon">👨‍🏫</span> Profesores
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.tramites' %}active{% endif %}" href="{{ url_for('web_admin.tramites') }}">
+      <span class="sidebar__icon">📋</span> Trámites
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.anuncios' %}active{% endif %}" href="{{ url_for('web_admin.anuncios') }}">
+      <span class="sidebar__icon">📢</span> Anuncios
+    </a>
+
+    <div class="sidebar__title">Sistema</div>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.reportes' %}active{% endif %}" href="{{ url_for('web_admin.reportes') }}">
+      <span class="sidebar__icon">📊</span> Reportes
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.audit' %}active{% endif %}" href="{{ url_for('web_admin.audit') }}">
+      <span class="sidebar__icon">📋</span> Audit log
+    </a>
+    <a class="sidebar__item {% if request.endpoint == 'web_admin.configuracion' %}active{% endif %}" href="{{ url_for('web_admin.configuracion') }}">
+      <span class="sidebar__icon">⚙️</span> Configuración
+    </a>
+  </aside>
+
+  <div class="layout-admin__content">
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

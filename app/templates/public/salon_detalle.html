@@ -1,0 +1,92 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import badge %}
+{% block title %}{{ salon.codigo }} · Salones{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('web_public.landing') }}">Inicio</a>
+    <span class="breadcrumbs__sep">/</span>
+    <a href="{{ url_for('web_public.salones') }}">Salones</a>
+    <span class="breadcrumbs__sep">/</span>
+    <span>{{ salon.edificio.nombre }}</span>
+    <span class="breadcrumbs__sep">/</span>
+    <span>{{ salon.codigo }}</span>
+  </nav>
+
+  <div class="flex items-center gap-4 mb-6" style="flex-wrap: wrap;">
+    <h1 class="d-32" style="margin: 0;">{{ salon.codigo }}</h1>
+    {{ badge(salon.tipo|replace('_', ' '), 'navy') }}
+    <span class="chip">{{ salon.capacidad }} cupos · piso {{ salon.piso }}</span>
+    <span class="chip" id="disp-chip">
+      <span class="dot dot--success"></span>
+      Calculando disponibilidad…
+    </span>
+  </div>
+
+  {% if salon.nombre %}<p class="b-16 text-muted mb-4">{{ salon.nombre }}</p>{% endif %}
+  {% if salon.descripcion %}<p class="b-14 mb-4">{{ salon.descripcion }}</p>{% endif %}
+
+  <div class="grid" style="grid-template-columns: 2fr 1fr; gap: var(--s-8); margin-top: var(--s-6);">
+    <section>
+      <h2 class="d-20 mb-3">Disponibilidad esta semana</h2>
+      <div id="disp-grid">
+        <p class="text-muted">Cargando…</p>
+      </div>
+    </section>
+
+    <aside>
+      <h2 class="d-20 mb-3">Equipamiento</h2>
+      {% if salon.equipamiento %}
+        <ul class="stack" style="list-style: none; padding: 0;">
+          {% for eq in salon.equipamiento %}
+            <li class="flex items-center gap-2"><span>✓</span> {{ eq|replace('_', ' ')|capitalize }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted b-14">Sin equipamiento registrado.</p>
+      {% endif %}
+      <a class="btn btn--outline mt-6" href="{{ url_for('web_public.mapa') }}?highlight={{ salon.id }}">Ver en el mapa</a>
+    </aside>
+  </div>
+</div>
+
+<script>
+const SALON_ID = {{ salon.id }};
+const horas = Array.from({length: 14}, (_, i) => i + 7); // 07 .. 20
+const dias = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+const lbl = {lun:'Lun', mar:'Mar', mie:'Mié', jue:'Jue', vie:'Vie', sab:'Sáb'};
+
+(async () => {
+  try {
+    const r = await fetch(`/api/v1/salones/${SALON_ID}`).then(r => r.json());
+    const disp = r.disponibilidad_semana || {};
+    // Render grid
+    const cells = horas.map(h => {
+      const row = dias.map(d => {
+        const ocup = (disp[d] || []).find(b => parseInt(b.hora_inicio.split(':')[0]) === h);
+        if (ocup) {
+          return `<div style="background: var(--navy-800); color: var(--surface-0); padding: 6px; border-radius: var(--r-4); font: 700 11px var(--font-body);">
+            ${(ocup.materia||'Ocupado').slice(0,18)}<br><span class="mono-10">${ocup.hora_inicio}–${ocup.hora_fin}</span></div>`;
+        }
+        return `<div style="background: var(--surface-150); padding: 6px; border-radius: var(--r-4); min-height: 32px;"></div>`;
+      }).join('');
+      return `<div class="mono-12 text-soft text-right">${('0'+h).slice(-2)}:00</div>${row}`;
+    }).join('');
+    document.getElementById('disp-grid').innerHTML = `
+      <div style="display: grid; grid-template-columns: 56px repeat(6, 1fr); gap: 4px; align-items: stretch;">
+        <div></div>${dias.map(d => `<div class="mono-12 text-center" style="font-weight:700; padding: 6px; background: var(--navy-800); color: var(--surface-0); border-radius: var(--r-4);">${lbl[d]}</div>`).join('')}
+        ${cells}
+      </div>
+      <div class="schedule-legend mt-3"><span><span class="schedule-legend__chip" style="background: var(--navy-800);"></span>Ocupado</span><span><span class="schedule-legend__chip" style="background: var(--surface-150);"></span>Libre</span></div>`;
+
+    const chip = document.getElementById('disp-chip');
+    chip.innerHTML = r.disponible_ahora
+      ? '<span class="dot dot--success"></span> Libre ahora'
+      : '<span class="dot dot--warning"></span> Ocupado ahora';
+  } catch (e) {
+    document.getElementById('disp-grid').innerHTML = '<p class="text-muted">No se pudo cargar la disponibilidad.</p>';
+  }
+})();
+</script>
+{% endblock %}

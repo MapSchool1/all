@@ -1,0 +1,63 @@
+{% extends '_base.html' %}
+{% block title %}Recuperar contraseña · Matute Guide{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-split">
+  <aside class="auth-split__left">
+    <div>
+      <p class="auth-split__quote">"A todos se nos olvidan las cosas. Recuperar el acceso debería ser fácil."</p>
+      <p class="auth-split__attr">— Equipo Matute Guide</p>
+    </div>
+  </aside>
+  <section class="auth-split__right">
+    <form class="auth-split__form" id="forgot-form" novalidate>
+      <a class="navbar__brand" href="{{ url_for('web_public.landing') }}"
+         style="color: var(--navy-800); display:block; margin-bottom: var(--s-6);">Matute Guide</a>
+      <h1 class="d-24 mb-2">Recuperar contraseña</h1>
+      <p class="b-14 text-muted mb-6">
+        Te enviaremos un enlace para restablecer tu contraseña.
+      </p>
+
+      <div id="forgot-msg" class="hidden mb-4"></div>
+
+      <div class="field">
+        <label class="field__label" for="email">Correo institucional</label>
+        <input class="input" type="email" id="email" required data-validate="required email" />
+        <div class="field__error">Correo inválido</div>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--lg btn--block">Enviar enlace</button>
+
+      <p class="text-center mt-4 b-12 text-muted">
+        ¿Ya recordaste? <a href="{{ url_for('web_auth.login') }}">Iniciar sesión</a>
+      </p>
+    </form>
+  </section>
+</div>
+
+<script>
+document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email');
+  if (!validateField(email)) return;
+  try {
+    const r = await fetch('/auth/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.value.trim().toLowerCase() }),
+    }).then(r => r.json());
+    const wrap = document.getElementById('forgot-msg');
+    wrap.classList.remove('hidden');
+    let msg = r.message || 'Listo';
+    if (r.dev_url) {
+      msg += `<br><br><strong>Modo dev:</strong> <a href="${r.dev_url}">${r.dev_url}</a>`;
+    }
+    wrap.innerHTML = `<div class="alert alert--success"><div class="alert__body">${msg}</div></div>`;
+  } catch (e) {
+    toast('Error', 'danger', 'No se pudo procesar la solicitud');
+  }
+});
+</script>
+{% endblock %}

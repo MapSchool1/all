@@ -1,0 +1,83 @@
+{% extends '_base.html' %}
+{% from 'components/_macros.html' import alert %}
+{% block title %}Iniciar sesión · Matute Guide{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-split">
+  <aside class="auth-split__left">
+    <div>
+      <p class="auth-split__quote">"Aprender a navegar el campus también forma parte de aprender."</p>
+      <p class="auth-split__attr">— Comunidad CUValles</p>
+    </div>
+  </aside>
+  <section class="auth-split__right">
+    <form class="auth-split__form" id="login-form" novalidate>
+      <a class="navbar__brand" href="{{ url_for('web_public.landing') }}" style="color: var(--navy-800); display:block; margin-bottom: var(--s-6);">Matute Guide</a>
+      <h1 class="d-24 mb-4">Inicia sesión</h1>
+
+      <div id="login-error" class="hidden mb-4">
+        {{ alert('Credenciales inválidas. Vuelve a intentarlo.', variant='danger') }}
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="email">Correo institucional</label>
+        <input class="input" type="email" id="email" name="email"
+               required data-validate="required email"
+               placeholder="usuario@alumnos.udg.mx" autocomplete="email" />
+        <div class="field__error">Correo inválido</div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="password">Contraseña</label>
+        <div class="input-wrap">
+          <input class="input" type="password" id="password" name="password"
+                 required data-validate="required min8" autocomplete="current-password" />
+        </div>
+        <div class="field__error">Contraseña requerida</div>
+      </div>
+
+      <div class="text-right mb-4">
+        <a class="b-12" href="{{ url_for('web_auth.forgot') }}">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--lg btn--block">Iniciar sesión</button>
+
+      <div class="divider"></div>
+      <a href="{{ url_for('web_auth.register') }}" class="btn btn--secondary btn--lg btn--block">Crear una cuenta</a>
+    </form>
+  </section>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email');
+  const pwd = document.getElementById('password');
+  if (!validateField(email) || !validateField(pwd)) return;
+  try {
+    // 1) JWT desde API para llamadas SPA
+    const r = await api('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: email.value.trim().toLowerCase(),
+                             password: pwd.value }),
+    });
+    TokenStore.access = r.access_token;
+    TokenStore.refresh = r.refresh_token;
+    // 2) Sesión Flask para vistas server-side
+    const s = await fetch('/auth/web-login', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.value.trim().toLowerCase(),
+                             password: pwd.value }),
+    }).then(r => r.json());
+    window.location.href = s.redirect || '/dashboard';
+  } catch (err) {
+    document.getElementById('login-error').classList.remove('hidden');
+    document.getElementById('login-error').querySelector('.alert__body div:last-child').textContent =
+      err.body?.error || 'Credenciales inválidas. Vuelve a intentarlo.';
+  }
+});
+</script>
+{% endblock %}
