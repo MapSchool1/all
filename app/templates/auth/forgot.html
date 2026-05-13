@@ -14,7 +14,11 @@
   <section class="auth-split__right">
     <form class="auth-split__form" id="forgot-form" novalidate>
       <a class="navbar__brand" href="{{ url_for('web_public.landing') }}"
-         style="color: var(--navy-800); display:block; margin-bottom: var(--s-6);">Matute Guide</a>
+         aria-label="Matute Guide — inicio"
+         style="display: inline-block; margin-bottom: var(--s-6);">
+        <img src="{{ url_for('static', filename='img/logo-navy.png') }}"
+             alt="Matute Guide" style="height: 48px; width: auto;" />
+      </a>
       <h1 class="d-24 mb-2">Recuperar contraseña</h1>
       <p class="b-14 text-muted mb-6">
         Te enviaremos un enlace para restablecer tu contraseña.

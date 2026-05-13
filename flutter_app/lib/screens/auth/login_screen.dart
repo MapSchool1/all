@@ -60,9 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Matute Guide',
-                style: MapText.display(20, w: FontWeight.w700,
-                                       color: MapColors.navy800)),
+              Image.asset('assets/images/logo-navy.png',
+                  height: 56, fit: BoxFit.contain),
               const SizedBox(height: 32),
               Text('Inicia sesión', style: MapText.d24),
               const SizedBox(height: 24),

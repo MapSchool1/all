@@ -72,10 +72,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Matute Guide',
-                      style: MapText.display(20, w: FontWeight.w700,
-                                             color: MapColors.surface0)),
-                    const SizedBox(height: 4),
+                    Image.asset('assets/images/logo-white.png',
+                        height: 40, fit: BoxFit.contain),
+                    const SizedBox(height: 8),
                     Text('Panel administrativo',
                       style: MapText.b12.copyWith(color: MapColors.navy200)),
                   ],

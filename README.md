@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="app/static/img/logo-navy.png" alt="Matute Guide — Guía del campus" height="120" />
+</p>
+
 # Matute Guide
 
 > **Plataforma escolar integral para la red Universidad de Guadalajara.**

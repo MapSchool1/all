@@ -37,7 +37,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Matute Guide'),
+        title: Image.asset('assets/images/logo-white.png',
+            height: 32, fit: BoxFit.contain),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),

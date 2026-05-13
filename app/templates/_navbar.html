@@ -1,7 +1,11 @@
 {% from 'components/_macros.html' import avatar %}
 <nav class="navbar" aria-label="Principal">
   <div class="navbar__inner">
-    <a class="navbar__brand" href="{{ url_for('web_public.landing') }}">Matute Guide</a>
+    <a class="navbar__brand" href="{{ url_for('web_public.landing') }}"
+       aria-label="Matute Guide — inicio">
+      <img src="{{ url_for('static', filename='img/logo-white.png') }}"
+           alt="Matute Guide" class="navbar__logo" />
+    </a>
 
     {% if current_user %}
       {% if current_user.rol == 'estudiante' %}
