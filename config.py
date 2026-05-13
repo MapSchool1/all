@@ -15,8 +15,13 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}
 
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    # Access token corto: si expira, el front intenta refresh con la cookie.
+    # Si la cookie también expiró → 401 → cliente saca al usuario.
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    # Sesión Flask = ventana deslizante de inactividad (cookie persistente).
+    # Cada request la renueva (SESSION_REFRESH_EACH_REQUEST=True por defecto).
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=15)
     JWT_BLACKLIST_ENABLED = True
     JWT_BLACKLIST_TOKEN_CHECKS = ['access', 'refresh']
     # Cookies httpOnly para web + Bearer header para SPA/Flutter

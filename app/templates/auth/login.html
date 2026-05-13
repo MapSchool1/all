@@ -17,6 +17,16 @@
       <a class="navbar__brand" href="{{ url_for('web_public.landing') }}" aria-label="Matute Guide — inicio" style="display: inline-block; margin-bottom: var(--s-6);"><img src="{{ url_for('static', filename='img/logo-navy.png') }}" alt="Matute Guide" style="height: 48px; width: auto;" /></a>
       <h1 class="d-24 mb-4">Inicia sesión</h1>
 
+      {% if request.args.get('expired') %}
+        <div class="mb-4" id="session-expired-banner">
+          {% if request.args.get('reason') == 'inactivity' %}
+            {{ alert('Cerramos tu sesión por inactividad (10 minutos). Vuelve a iniciar sesión para continuar.', variant='warning') }}
+          {% else %}
+            {{ alert('Tu sesión expiró. Inicia sesión de nuevo para continuar.', variant='warning') }}
+          {% endif %}
+        </div>
+      {% endif %}
+
       <div id="login-error" class="hidden mb-4">
         {{ alert('Credenciales inválidas. Vuelve a intentarlo.', variant='danger') }}
       </div>
@@ -72,7 +82,11 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       body: JSON.stringify({ email: email.value.trim().toLowerCase(),
                              password: pwd.value }),
     }).then(r => r.json());
-    window.location.href = s.redirect || '/dashboard';
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    const safeNext = (next && next.startsWith('/') && !next.startsWith('//')
+                       && !next.startsWith('/auth/login')) ? next : null;
+    window.location.href = safeNext || s.redirect || '/dashboard';
   } catch (err) {
     document.getElementById('login-error').classList.remove('hidden');
     document.getElementById('login-error').querySelector('.alert__body div:last-child').textContent =

@@ -18,21 +18,23 @@
     const token = TokenStore.access;
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(path, { credentials: 'include', ...opts, headers });
-    if (res.status === 401 && TokenStore.refresh && !opts._retry) {
-      const r = await fetch('/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: TokenStore.refresh }),
-      });
-      if (r.ok) {
-        const j = await r.json();
-        TokenStore.access = j.access_token;
-        if (j.refresh_token) TokenStore.refresh = j.refresh_token;
+
+    // Para endpoints que NO son los de auth: si 401, intentamos refresh una vez.
+    const isAuthEndpoint = /^\/auth\/(login|web-login|web-logout|web-refresh|refresh|heartbeat)$/.test(path);
+    if (res.status === 401 && !opts._retry && !isAuthEndpoint) {
+      const refreshed = await tryRefreshTokens();
+      if (refreshed) {
         return api(path, { ...opts, _retry: true });
-      } else {
-        TokenStore.clear();
+      }
+      // Refresh falló: la sesión está muerta. Saca al usuario.
+      if (isAuthenticatedPage()) {
+        forceLogout('expired');
+        // throw para que el caller no procese más; forceLogout ya redirige
+        const err = new Error('Sesión expirada');
+        err.status = 401; throw err;
       }
     }
+
     let body = null;
     try { body = await res.json(); } catch (_) { body = null; }
     if (!res.ok) {
@@ -43,6 +45,98 @@
   }
   window.api = api;
   window.TokenStore = TokenStore;
+
+  // ============== SESSION LIFECYCLE ==============
+  const INACTIVITY_MS = 10 * 60 * 1000;          // 10 min sin eventos → logout
+  const HEARTBEAT_MS  = 2  * 60 * 1000;          // ping cada 2 min para mantener viva la cookie
+  const REFRESH_MS    = 12 * 60 * 1000;          // re-emitir JWT cookies antes de los 15 min de TTL
+  let lastActivity = Date.now();
+  let logoutInFlight = false;
+
+  function isAuthenticatedPage() {
+    return document.body && document.body.dataset.authenticated === 'true';
+  }
+
+  function markActivity() { lastActivity = Date.now(); }
+
+  async function tryRefreshTokens() {
+    // 1) Intento server-side (cookies httpOnly) — funciona si la sesión Flask
+    //    aún vive aunque el access JWT haya expirado.
+    try {
+      const r = await fetch('/auth/web-refresh', {
+        method: 'POST', credentials: 'include',
+      });
+      if (r.ok) return true;
+    } catch (_) { /* fallthrough */ }
+    // 2) Bearer + refresh token (Flutter/SPA path)
+    if (TokenStore.refresh) {
+      try {
+        const r = await fetch('/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: TokenStore.refresh }),
+        });
+        if (r.ok) {
+          const j = await r.json();
+          TokenStore.access = j.access_token;
+          if (j.refresh_token) TokenStore.refresh = j.refresh_token;
+          return true;
+        }
+      } catch (_) { /* fallthrough */ }
+    }
+    return false;
+  }
+  window.tryRefreshTokens = tryRefreshTokens;
+
+  function forceLogout(reason = 'expired') {
+    if (logoutInFlight) return;
+    logoutInFlight = true;
+    TokenStore.clear();
+    // Cierra el SSE para no spamear reconexiones
+    if (window._mgSSE) { try { window._mgSSE.close(); } catch (_) {} window._mgSSE = null; }
+    // Mensaje al usuario antes del redirect
+    try { toast('Tu sesión expiró', 'warning', 'Vuelve a iniciar sesión para continuar.', 2500); } catch (_) {}
+    // Mata sesión Flask + cookies en el server (fire-and-forget)
+    fetch('/auth/web-logout', { method: 'POST', credentials: 'include' })
+      .catch(() => {})
+      .finally(() => {
+        const next = encodeURIComponent(location.pathname + location.search);
+        setTimeout(() => {
+          location.href = `/auth/login?expired=1&reason=${reason}&next=${next}`;
+        }, 700);
+      });
+  }
+  window.forceLogout = forceLogout;
+
+  async function heartbeat() {
+    if (!isAuthenticatedPage()) return;
+    // Si el usuario lleva > INACTIVITY_MS sin interactuar → logout.
+    if (Date.now() - lastActivity > INACTIVITY_MS) {
+      forceLogout('inactivity');
+      return;
+    }
+    try {
+      const r = await fetch('/auth/heartbeat', { credentials: 'include' });
+      if (r.status === 401) forceLogout('expired');
+    } catch (_) { /* offline: no actuamos */ }
+  }
+
+  async function periodicRefresh() {
+    if (!isAuthenticatedPage()) return;
+    if (Date.now() - lastActivity > INACTIVITY_MS) return; // inactivo: no extiendas
+    const ok = await tryRefreshTokens();
+    if (!ok) forceLogout('expired');
+  }
+
+  function startSessionMonitor() {
+    if (!isAuthenticatedPage()) return;
+    ['click', 'keydown', 'mousemove', 'scroll', 'touchstart', 'pointerdown']
+      .forEach(evt => window.addEventListener(evt, markActivity, { passive: true }));
+    setInterval(heartbeat, HEARTBEAT_MS);
+    setInterval(periodicRefresh, REFRESH_MS);
+    // Primer heartbeat rápido para validar estado al cargar
+    setTimeout(heartbeat, 5000);
+  }
 
   // ============== TOAST ==============
   function toast(title, variant = 'info', body = '', duration = 6000) {
@@ -264,6 +358,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     initNotifs();
     initFormValidation();
+    startSessionMonitor();
   });
 
   // ============== INLINE FORM VALIDATION ==============

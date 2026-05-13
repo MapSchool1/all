@@ -130,6 +130,61 @@ def logout():
     return resp
 
 
+@bp.post('/web-logout')
+def web_logout():
+    """Logout JSON para llamadas AJAX (cierra sesión + cookies + revoca refresh)."""
+    uid = session.get('user_id')
+    if uid:
+        # Revocar todos los refresh tokens activos del usuario
+        RefreshToken.query.filter_by(user_id=uid, revoked=False).update(
+            {'revoked': True})
+        db.session.commit()
+    session.clear()
+    resp = jsonify({'ok': True})
+    unset_jwt_cookies(resp)
+    return resp
+
+
+@bp.get('/heartbeat')
+def heartbeat():
+    """Ping de sesión: extiende la ventana de inactividad si sigue activa.
+
+    - 200 + {ok: true, expires_in_seconds: N} si la sesión Flask sigue viva.
+    - 401 si ya expiró → el cliente forza logout.
+    """
+    uid = session.get('user_id')
+    if not uid:
+        return jsonify({'ok': False, 'code': 'SESSION_EXPIRED'}), 401
+    user = User.query.get(uid)
+    if not user or user.is_deleted or user.estado != 'activo':
+        session.clear()
+        return jsonify({'ok': False, 'code': 'ACCOUNT_INVALID'}), 401
+    # Tocar la sesión para renovar la cookie (sliding TTL).
+    session.modified = True
+    ttl = current_app.config['PERMANENT_SESSION_LIFETIME'].total_seconds()
+    return jsonify({'ok': True, 'expires_in_seconds': int(ttl)})
+
+
+@bp.post('/web-refresh')
+def web_refresh():
+    """Refresh server-side: re-emite cookies JWT si la sesión Flask sigue viva.
+
+    Esto cubre el caso en que el access token JWT expiró pero la sesión Flask
+    (más larga, deslizante) sigue válida — emitimos un nuevo par de cookies sin
+    forzar al usuario a re-loguearse.
+    """
+    uid = session.get('user_id')
+    if not uid:
+        return jsonify({'ok': False, 'code': 'SESSION_EXPIRED'}), 401
+    user = User.query.get(uid)
+    if not user or user.is_deleted or user.estado != 'activo':
+        session.clear()
+        return jsonify({'ok': False, 'code': 'ACCOUNT_INVALID'}), 401
+    session.modified = True
+    response = jsonify({'ok': True})
+    return _issue_web_session(user, response)
+
+
 # =============== PASSWORD RESET ===============
 
 # Tokens en memoria por simplicidad. En producción usar tabla DB con expira_at.
