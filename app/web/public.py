@@ -65,7 +65,13 @@ def salon_detalle(codigo):
 
 @bp.get('/mapa')
 def mapa():
-    edificios = Edificio.query.filter_by(activo=True).all()
-    puntos = PuntoInteres.query.filter_by(activo=True).all()
+    edificios = (Edificio.query
+                 .filter_by(activo=True)
+                 .order_by(Edificio.clave.asc())
+                 .all())
+    puntos = (PuntoInteres.query
+              .filter_by(activo=True)
+              .order_by(PuntoInteres.tipo.asc(), PuntoInteres.nombre.asc())
+              .all())
     return render_template('public/mapa.html',
                            edificios=edificios, puntos=puntos)

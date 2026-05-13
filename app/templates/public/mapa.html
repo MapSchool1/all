@@ -6,7 +6,7 @@
   <h1 class="d-32 mb-2">Mapa del campus</h1>
   <p class="b-16 text-muted mb-6">Click en un edificio para ver sus salones; o usa la búsqueda.</p>
 
-  <div class="grid" style="grid-template-columns: 280px 1fr; gap: var(--s-6);">
+  <div class="map-layout">
     <aside>
       <input class="input mb-4" id="map-search" placeholder="Buscar salón o edificio…" />
       <div class="card mb-4">
@@ -52,18 +52,22 @@
     </aside>
 
     <div class="map-stage">
-      <svg id="campus-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto;">
+      <svg id="campus-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet"
+           xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="Mapa interactivo del campus">
         <rect width="1200" height="800" fill="var(--surface-100)" />
         {# Edificios #}
         {% for e in edificios %}
+          {% set ex = e.coordenadas_x or 0 %}
+          {% set ey = e.coordenadas_y or 0 %}
+          {% set ew = e.ancho_mapa or 180 %}
+          {% set eh = e.alto_mapa or 130 %}
           <g class="map-edificio" tabindex="0" role="button" aria-label="{{ e.nombre }}"
              data-id="{{ e.id }}" data-clave="{{ e.clave }}"
-             data-x="{{ e.coordenadas_x }}" data-y="{{ e.coordenadas_y }}">
-            <rect x="{{ e.coordenadas_x }}" y="{{ e.coordenadas_y }}"
-                  width="{{ e.ancho_mapa }}" height="{{ e.alto_mapa }}"
-                  fill="{{ e.color_mapa }}" rx="6" />
-            <text x="{{ e.coordenadas_x + e.ancho_mapa / 2 }}"
-                  y="{{ e.coordenadas_y + e.alto_mapa / 2 + 10 }}"
+             data-x="{{ ex }}" data-y="{{ ey }}">
+            <rect x="{{ ex }}" y="{{ ey }}" width="{{ ew }}" height="{{ eh }}"
+                  fill="{{ e.color_mapa or '#172846' }}" rx="6" />
+            <text x="{{ ex + ew / 2 }}" y="{{ ey + eh / 2 + 10 }}"
                   text-anchor="middle" fill="white"
                   font-family="Lexend" font-size="36" font-weight="800">
               {{ e.clave }}
@@ -72,17 +76,25 @@
         {% endfor %}
         {# Puntos de interés #}
         {% for p in puntos %}
+          {% set px = p.coord_x or 0 %}
+          {% set py = p.coord_y or 0 %}
           <g class="map-poi" tabindex="0" role="button" aria-label="{{ p.nombre }}"
              data-id="{{ p.id }}" data-tipo="{{ p.tipo }}">
-            <circle cx="{{ p.coord_x }}" cy="{{ p.coord_y }}" r="14"
+            <circle cx="{{ px }}" cy="{{ py }}" r="14"
                     fill="{% if p.tipo == 'cafeteria' %}var(--success){% elif p.tipo == 'biblioteca' %}var(--info){% elif p.tipo == 'enfermeria' %}var(--danger){% elif p.tipo == 'estacionamiento' %}var(--warning){% else %}var(--ink-600){% endif %}" />
-            <text x="{{ p.coord_x }}" y="{{ p.coord_y + 4 }}"
+            <text x="{{ px }}" y="{{ py + 4 }}"
                   text-anchor="middle" fill="white" font-size="12" font-weight="700">
               {% if p.tipo == 'cafeteria' %}☕{% elif p.tipo == 'biblioteca' %}📚{% elif p.tipo == 'enfermeria' %}+{% elif p.tipo == 'estacionamiento' %}🅿️{% elif p.tipo == 'canchas' %}⚽{% else %}·{% endif %}
             </text>
           </g>
         {% endfor %}
       </svg>
+      {% if not edificios and not puntos %}
+        <div class="map-stage__empty" role="status">
+          <div class="d-20">Mapa no disponible</div>
+          <p class="b-14">Aún no hay edificios ni puntos registrados para este plantel.</p>
+        </div>
+      {% endif %}
     </div>
   </div>
 </div>
