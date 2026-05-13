@@ -11,6 +11,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icon-180.png') }}" />
   <meta name="theme-color" content="#172846" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  {# app.js síncrono en <head>: define window.api ANTES que cualquier inline script
+     del body lo use. Si va al final del body, los inline scripts (loadHorario(),
+     loadUsers(), etc.) corren antes y `api` queda undefined. #}
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -28,7 +32,6 @@
   <div class="toast-container" id="toast-container"
        role="status" aria-live="polite" aria-atomic="false"></div>
 
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

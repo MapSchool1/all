@@ -192,7 +192,9 @@ document.getElementById('crear-horario')?.addEventListener('click', async () => 
   } catch (e) { toast('Error', 'danger', e.body?.error || ''); }
 });
 
-loadHorario();
-loadSelects();
+document.addEventListener('DOMContentLoaded', () => {
+  loadHorario();
+  loadSelects();
+});
 </script>
 {% endblock %}
